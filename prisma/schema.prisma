@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SSO mirror of CRM users. Auth happens entirely in CRM; we lazily upsert a row
+// here on first sight so role checks and audit trails have a local reference.
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String?
+  role         String   @default("member") // admin | hr | manager | member
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// A business unit Wallace wants to monitor (销售部 / 市场部 / 运营部 ...).
+model Department {
+  id        String   @id @default(cuid())
+  key       String   @unique // sales | marketing | operations
+  name      String // 销售部
+  icon      String? // emoji shown on the dashboard
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  metrics Metric[]
+
+  @@index([order])
+}
+
+// A KPI definition (销售转化率 / 流量 / 私信数量 / 开口成本 ...). The actual
+// monthly numbers live in MetricValue, one row per (metric, month).
+model Metric {
+  id           String  @id @default(cuid())
+  key          String  @unique // sales_conversion_rate | traffic | dm_count | cost_per_open
+  name         String // 销售转化率
+  unit         String? // % | 个 | 次 | $ — shown after the value
+  // Which direction is "good" — drives the green/red colouring of the MoM delta.
+  betterWhen   String  @default("up") // up | down
+  // How to render the value: number | percent | currency
+  format       String  @default("number")
+  description  String? // tooltip / what this measures and how it's collected
+  // How this metric is normally fed: manual | cron | crm | marketing
+  defaultSource String @default("manual")
+  order        Int     @default(0)
+  departmentId String
+
+  department Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  values     MetricValue[]
+
+  @@index([departmentId, order])
+}
+
+// One KPI reading for one calendar month. `period` is "YYYY-MM" (the month the
+// number describes). Upsert key is (metricId, period) so re-ingesting a month
+// overwrites rather than stacking duplicates — month-over-month is then just
+// "this period row minus the previous period row".
+model MetricValue {
+  id        String   @id @default(cuid())
+  metricId  String
+  period    String // "YYYY-MM"
+  value     Float
+  source    String   @default("manual") // manual | cron | crm | marketing
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  metric Metric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@unique([metricId, period])
+  @@index([period])
+}

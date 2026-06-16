@@ -1,0 +1,37 @@
+services:
+  management:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: management-management
+    container_name: management
+    restart: unless-stopped
+    # Bind only to loopback — reverse proxy in front forwards :443 → :3004
+    # Port map on droplet: 3000=crm, 3001=wallacewang.ca, 3002=books, 3003=marketing, 3004=management
+    ports:
+      - "127.0.0.1:3004:3000"
+    volumes:
+      - management-data:/data
+    environment:
+      DATABASE_URL: "file:/data/management.db"
+      # Must equal CRM's JWT_SECRET so the shared SSO cookie verifies.
+      AUTH_SECRET: "${AUTH_SECRET}"
+      # Set to ".wallacewang.ca" to share the JWT cookie with WWFS-CRM (SSO).
+      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-}"
+      # Comma-separated roles allowed into the management console.
+      # Default: only admin (Wallace). Add hr/manager here once CRM issues them.
+      ALLOWED_ROLES: "${ALLOWED_ROLES:-admin}"
+      # Bearer token for POST /api/ingest (the month-end Claude scheduled task
+      # pushes platform metrics here). Empty = ingest disabled.
+      INGEST_TOKEN: "${INGEST_TOKEN:-}"
+      # Read-only API access to sister apps for live metric pulls (phase 2).
+      CRM_API_BASE: "${CRM_API_BASE:-https://crm.wallacewang.ca}"
+      CRM_API_KEY: "${CRM_API_KEY:-}"
+    # Cap RAM so it can't starve CRM on the 4GB droplet
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  management-data:
