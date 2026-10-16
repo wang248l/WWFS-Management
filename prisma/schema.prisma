@@ -76,3 +76,60 @@ model MetricValue {
   @@unique([metricId, period])
   @@index([period])
 }
+
+// ---- 团队看板（2026-10-16 Wallace：「一个看板就能完成……主要检查员工和 AI agent 的 input」）----
+
+// 一个要盯的人。行为数据不存在这里：每次打开看板时去 CRM / Marketing 现拉，
+// 按 matchName（不分大小写的子串）认出是 CRM / Marketing 里的哪个账号。
+model Staff {
+  id                String   @id @default(cuid())
+  name              String   @unique // Amelia
+  // 用来在 CRM 用户名/邮箱、Marketing 显示名里认人；空 = 用 name
+  matchName         String?
+  role              String? // 出镜顾问 / 运营 ...
+  // 每周拍摄分钟目标（提词器录制时长），0 = 不考核拍摄
+  weeklyFilmMinutes Int      @default(0)
+  active            Boolean  @default(true)
+  order             Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// 一个 AI agent：谁、干什么、多久该跑一次。以后加 agent 就是加一行
+// （看板「管理名单」页，或 agent 第一次打卡时自动登记）。
+model Agent {
+  id         String     @id @default(cuid())
+  key        String     @unique // mac | ryzen —— 打卡时用的名字
+  name       String // MAC
+  duty       String? // 职责：同步脚本到 Google Drive、剪辑、手机发布 ...
+  host       String? // 跑在哪台机器上
+  schedule   String? // 人话排程：每天 9:00 / 每 10 分钟
+  // 超过 everyHours + graceHours 没动静就算「超时」
+  everyHours Float      @default(24)
+  graceHours Float      @default(2)
+  // Marketing 里这台机器用的 API 钥匙名（AgentToken.label，子串匹配）——
+  // 钥匙最后使用时间也算一次「活着」的信号，agent 不用改代码就能被看到
+  tokenMatch String?
+  active     Boolean    @default(true)
+  order      Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  runs       AgentRun[]
+}
+
+// agent 每跑完一次打一次卡：POST /api/agents/run
+model AgentRun {
+  id          String    @id @default(cuid())
+  agentId     String
+  task        String? // 这次干的是哪件事
+  status      String    @default("ok") // ok | error | running
+  summary     String? // 一句话：干出了什么
+  outputCount Int? // 产出数量（发了几条、剪了几个）
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, createdAt])
+}

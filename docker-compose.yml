@@ -27,6 +27,11 @@ services:
       # Read-only API access to sister apps for live metric pulls (phase 2).
       CRM_API_BASE: "${CRM_API_BASE:-https://crm.wallacewang.ca}"
       CRM_API_KEY: "${CRM_API_KEY:-}"
+      # 每日仪表盘：Marketing 只读汇总 + GitHub 最近上线
+      MARKETING_API_BASE: "${MARKETING_API_BASE:-https://marketing.wallacewang.ca}"
+      MARKETING_API_KEY: "${MARKETING_API_KEY:-}"
+      GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
+      WATCH_REPOS: "${WATCH_REPOS:-wang248l/WWFS-CRM:CRM,wang248l/WWFS-Marketing:Marketing}"
     # Cap RAM so it can't starve CRM on the 4GB droplet
     deploy:
       resources:

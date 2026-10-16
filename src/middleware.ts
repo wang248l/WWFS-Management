@@ -5,11 +5,11 @@ import { jwtVerify } from "jose";
 const CRM_COOKIE = "crm_session";
 const MGMT_COOKIE = "wwfs_management_session";
 
-// /api/ingest carries its own bearer-token auth (INGEST_TOKEN) for the
+// /api/ingest and /api/agents/run (AI agent 打卡) carry their own bearer-token auth (INGEST_TOKEN) for the
 // month-end Claude scheduled task — no session cookie available there.
 // /no-access is the friendly "你没权限" screen for authenticated-but-unauthorised
 // users; it must be public or the rewrite below would loop.
-const PUBLIC_PATHS = ["/login", "/api/login", "/api/ingest", "/no-access"];
+const PUBLIC_PATHS = ["/login", "/api/login", "/api/ingest", "/api/agents/run", "/no-access"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
