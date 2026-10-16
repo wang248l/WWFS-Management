@@ -17,9 +17,9 @@ export const dynamic = "force-dynamic";
 function ago(iso: string | null): string {
   const h = hoursAgo(iso);
   if (h === null) return "—";
-  if (h < 1) return `${Math.max(1, Math.round(h * 60))} 分钟前`;
-  if (h < 48) return `${Math.round(h)} 小时前`;
-  return `${Math.floor(h / 24)} 天前`;
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))}分钟前`;
+  if (h < 48) return `${Math.round(h)}小时前`;
+  return `${Math.floor(h / 24)}天前`;
 }
 
 const STATUS: Record<AgentStatus, { label: string; cls: string }> = {
@@ -44,6 +44,30 @@ function SourcePill({ name, src }: { name: string; src: { ok: boolean; error?: s
 function Td({ children, warn }: { children: React.ReactNode; warn?: "red" | "amber" | false }) {
   const cls = warn === "red" ? "text-red-700 font-semibold" : warn === "amber" ? "text-amber-700 font-medium" : "";
   return <td className={"px-3 py-2 whitespace-nowrap " + cls}>{children}</td>;
+}
+
+function BigNumber({ label, value, warn }: { label: string; value: React.ReactNode; warn?: boolean }) {
+  return (
+    <div className="card px-4 py-4">
+      <div className={"text-3xl md:text-4xl font-bold tabular-nums " + (warn ? "text-red-600" : "text-stone-900")}>{value}</div>
+      <div className="text-sm text-stone-500 mt-1">{label}</div>
+    </div>
+  );
+}
+
+function Mini({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-sm md:text-base font-semibold tabular-nums whitespace-nowrap">{value}</div>
+      <div className="text-[11px] text-stone-500">{label}</div>
+    </div>
+  );
+}
+
+function dot(flags: { level: "red" | "amber" }[]) {
+  if (flags.some((f) => f.level === "red")) return "bg-red-500";
+  if (flags.length) return "bg-amber-400";
+  return "bg-emerald-500";
 }
 
 type Warn = "red" | "amber" | false;
@@ -142,29 +166,91 @@ export default async function Daily() {
   const [salesKpi, mktKpi, opsKpi] = await Promise.all([monthlyStrip("sales"), monthlyStrip("marketing"), monthlyStrip("operations")]);
   const today = new Intl.DateTimeFormat("zh-CN", { timeZone: "America/Toronto", month: "long", day: "numeric", weekday: "long" }).format(new Date());
   const m = mkt.ok ? mkt.data.agents : null;
+  const crmRows = staffRows.map((s) => s.crm).filter((c): c is NonNullable<typeof c> => !!c);
+  const totals = {
+    closes: crmRows.reduce((n, c) => n + c.closes, 0),
+    followUpsToday: crmRows.reduce((n, c) => n + c.followUpsToday, 0),
+    overdue: crmRows.reduce((n, c) => n + c.overdue, 0),
+  };
+  const agentsOk = agentRows.filter((a) => a.active && a.status === "ok").length;
+  // 同一个人的红色提醒合并成一行，首页每人最多一行
+  const redAlerts: { who: string; text: string }[] = [];
+  for (const a of alerts.filter((x) => x.level === "red")) {
+    const row = redAlerts.find((r) => r.who === a.who);
+    if (row) row.text += " · " + a.text;
+    else redAlerts.push({ who: a.who, text: a.text });
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-xl bg-gradient-to-br from-brand-50 to-sky-50 border border-brand-100 px-6 py-5 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold">🧭 每日仪表盘 · {today}</h1>
-          <p className="mt-1 text-sm text-stone-600">
-            员工和 AI agent 最近 {WINDOW_DAYS} 天交了什么、有没有按时做。先看红色，没红就不用往下看。
-          </p>
-        </div>
+    <div className="space-y-5">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <h1 className="text-xl md:text-2xl font-semibold">{today}</h1>
         <div className="flex gap-1.5 flex-wrap">
           <SourcePill name="CRM" src={crm} />
           <SourcePill name="Marketing" src={mkt} />
-          <SourcePill name="GitHub" src={merged} />
         </div>
       </div>
 
-      {/* 1. 今天要处理 */}
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">🚨 今天要处理</h2>
-        {alerts.length === 0 ? (
-          <div className="card p-4 text-emerald-700">✓ 一切正常，没有需要你处理的事。</div>
-        ) : (
+      {/* 1. 四个大数字：每天只看这里 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <BigNumber label="本周成交" value={crm.ok ? totals.closes : "—"} />
+        <BigNumber label="今日跟进" value={crm.ok ? totals.followUpsToday : "—"} warn={crm.ok && totals.followUpsToday === 0} />
+        <BigNumber label="逾期未跟进客户" value={crm.ok ? totals.overdue : "—"} warn={totals.overdue > 0} />
+        <BigNumber label="AI Agent 正常" value={`${agentsOk}/${agentRows.filter((a) => a.active).length}`} warn={agentsOk < agentRows.filter((a) => a.active).length} />
+      </div>
+
+      {/* 2. 要你处理的事：只有红色；黄色收在明细里 */}
+      {redAlerts.length === 0 ? (
+        <div className="card p-4 text-emerald-700 font-medium">✓ 没有需要你马上处理的事</div>
+      ) : (
+        <div className="card divide-y divide-stone-100">
+          {redAlerts.map((a, i) => (
+            <div key={i} className="px-4 py-3 flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-red-500" />
+              <span className="font-semibold w-20 md:w-28 shrink-0">{a.who}</span>
+              <span className="text-stone-800">{a.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 3. 每人每 agent 一行 */}
+      <div className="card divide-y divide-stone-100">
+        {staffRows.map((s) => {
+          const goal = s.weeklyFilmMinutes;
+          const mins = s.mkt?.filmMinutes || 0;
+          return (
+            <div key={s.id} className="px-4 py-3 flex items-center gap-3">
+              <span className={"w-2.5 h-2.5 rounded-full shrink-0 " + (s.crm || s.mkt ? dot(s.flags) : "bg-stone-300")} />
+              <span className="font-semibold w-20 shrink-0">{s.name}</span>
+              <div className="flex-1 grid grid-cols-3 gap-2 text-center">
+                <Mini label="今日跟进" value={s.crm ? s.crm.followUpsToday : "—"} />
+                <Mini label="逾期" value={s.crm ? s.crm.overdue : "—"} />
+                <Mini label="本周拍摄" value={goal ? `${mins}/${goal}` : mins} />
+              </div>
+            </div>
+          );
+        })}
+        {agentRows.filter((a) => a.active).map((a) => (
+          <div key={a.id} className="px-4 py-3 flex items-center gap-3">
+            <span className={"w-2.5 h-2.5 rounded-full shrink-0 " + (a.status === "ok" ? "bg-emerald-500" : a.status === "never" ? "bg-amber-400" : "bg-red-500")} />
+            <span className="font-semibold w-20 shrink-0">🤖 {a.name}</span>
+            <div className="flex-1 grid grid-cols-3 gap-2 text-center">
+              <Mini label="状态" value={STATUS[a.status].label} />
+              <Mini label="最后运行" value={ago(a.lastSeenAt)} />
+              <Mini label="本周产出" value={a.outputs7d} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <details className="group">
+        <summary className="cursor-pointer select-none text-sm text-brand-700 py-2">查看明细（全部提醒、各部门、Agent 记录、系统更新）</summary>
+        <div className="space-y-8 pt-4">
+      {/* 全部提醒 */}
+      {alerts.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">全部提醒</h2>
           <div className="card divide-y divide-stone-100">
             {alerts.map((a, i) => (
               <div key={i} className="px-4 py-2.5 flex items-center gap-3 text-sm">
@@ -174,8 +260,8 @@ export default async function Daily() {
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* 2. 销售部 */}
       <section className="space-y-3">
@@ -384,10 +470,13 @@ export default async function Daily() {
         )}
       </section>
 
-      <p className="text-xs text-stone-400">
-        只统计工作产出（跟进、日报、刷题、拍摄、agent 运行），不采集位置、屏幕或键盘。安省员工满 25 人时须有书面电子监控政策（ESA Part XI.1），
-        届时把这页列的数据项写进政策告知员工即可。
-      </p>
+        <p className="text-xs text-stone-400">
+          只统计工作产出（跟进、日报、刷题、拍摄、agent 运行），不采集位置、屏幕或键盘。安省员工满 25 人时须有书面电子监控政策（ESA Part XI.1），
+          届时把这页列的数据项写进政策告知员工即可。
+        </p>
+        </div>
+      </details>
+
     </div>
   );
 }
