@@ -102,6 +102,41 @@ async function main() {
   }
   console.log(`Seeded ${CATALOGUE.length} departments and their metric catalogue.`);
 
+  // 1b) 团队看板的初始名单（2026-10-16 Wallace：「现在就是 Amelia，Ishan，MAC，Ryzen 四个员工，
+  //     其中 MAC 和 Ryzen 是 AI agent」）。只在不存在时创建 —— 之后在看板「管理名单」页改的内容不会被覆盖。
+  const STAFF = [
+    { name: "Amelia", role: "出镜理财顾问", weeklyFilmMinutes: 300, order: 1 },
+    { name: "Ishan", role: "出镜理财顾问", weeklyFilmMinutes: 300, order: 2 },
+  ];
+  for (const s of STAFF) {
+    await prisma.staff.upsert({ where: { name: s.name }, update: {}, create: s });
+  }
+  const AGENTS = [
+    {
+      key: "mac",
+      name: "MAC",
+      host: "Mac",
+      duty: "读取自动派稿，把各 IP 的脚本同步到各人的 Google Drive；字幕路径助手",
+      schedule: "每天",
+      everyHours: 24,
+      tokenMatch: "mac",
+      order: 1,
+    },
+    {
+      key: "ryzen",
+      name: "Ryzen",
+      host: "Ryzen PC",
+      duty: "口播剪辑、通过 ADB 控制手机发布到各平台",
+      schedule: "每天",
+      everyHours: 24,
+      tokenMatch: "ryzen",
+      order: 2,
+    },
+  ];
+  for (const a of AGENTS) {
+    await prisma.agent.upsert({ where: { key: a.key }, update: {}, create: a });
+  }
+
   // 2) Local admin — only when SSO is NOT active. With COOKIE_DOMAIN set, CRM is
   //    the sole identity provider and a local admin would just be an orphan row.
   if (process.env.COOKIE_DOMAIN) {

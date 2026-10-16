@@ -9,6 +9,19 @@ Wallace Wang Financial Services 的**管理层经营数据驾驶舱**。把销�
 - **登录沿用 CRM**(单点登录 SSO):与 CRM 共用 `JWT_SECRET`,cookie 域 `.wallacewang.ca`。
 - **访问控制**:`ALLOWED_ROLES`(默认仅 `admin`)。HR / 部门负责人角色待 CRM 下发后加入即可。
 
+## 每日仪表盘(首页 `/`)
+
+打开就看「员工和 AI agent 最近 7 天交了什么、有没有按时做」。第一块「今天要处理」只列异常(红/黄),
+下面按部门给明细,再往下是 AI agent 花名册和 CRM / Marketing 最近上线的改动。原来的月度经营总览挪到 `/kpi`。
+
+- 数据**不落本地库**,每次打开现拉(只读):CRM `GET /api/admin/team-activity`(`CRM_API_KEY`)、
+  Marketing `GET /api/agent/ops-summary`(`MARKETING_API_KEY`)、GitHub 最近合并的 PR(`GITHUB_TOKEN`)。
+  哪个没配,那一块显示「未连接」,其余照常。
+- 名单在 `/team` 管:员工(按名字匹配 CRM / Marketing 账号、每周拍摄目标)和 AI agent(职责、排程、多久该跑一次)。
+- **Agent 打卡**:`POST /api/agents/run`(Bearer `INGEST_TOKEN`),`{"agent":"mac","task":"…","status":"ok|error|running","summary":"…","outputCount":5}`。
+  没登记过的 agent 第一次打卡自动登记。填了「Marketing 钥匙名」的 agent,用 Marketing API 的最后时间也算活动。
+  超过「多少小时跑一次 + 宽限」没动静 → 标红「超时」。
+
 ## 数据模型
 
 - `Department` — 部门(销售部 / 市场部 / 运营部)。
