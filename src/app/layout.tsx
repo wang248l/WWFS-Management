@@ -15,6 +15,7 @@ export const viewport: Viewport = { themeColor: "#1d4ed8" };
 
 const NAV = [
   { href: "/", label: "每日仪表盘" },
+  { href: "/calls", label: "通话分析" },
   { href: "/kpi", label: "月度经营总览" },
   { href: "/data", label: "数据录入" },
   { href: "/team", label: "人员与 Agent 名单" },

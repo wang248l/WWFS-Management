@@ -22,6 +22,18 @@ Wallace Wang Financial Services 的**管理层经营数据驾驶舱**。把销�
   没登记过的 agent 第一次打卡自动登记。填了「Marketing 钥匙名」的 agent,用 Marketing API 的最后时间也算活动。
   超过「多少小时跑一次 + 宽限」没动静 → 标红「超时」。
 
+## 通话分析(`/calls`)
+
+电话录音 → 逐字稿 → AI 点评,再跟 CRM 里客户后来来没来对上,看转化率为什么不够。首页摘每人一行出席率和结论。
+
+- `/calls`:四个数字(第一次会议出席率、约到没来、通话平均分、分析了几通)→ 哪一环节高得 / 低得不正常 → 每人一张卡
+  (漏斗、来了 vs 放鸽子两组对比、Claude 写的放鸽子原因)。
+- `/calls/<CRM 用户 id>`:一个人的报告全文 + 每一通电话(按结果筛:放鸽子 / 来了 / 没约到…),点进去看点评和逐字稿。
+- 数据现拉 CRM `GET /api/admin/call-insights`、`/api/admin/call-insights/calls/:id`(同一个 `CRM_API_KEY`)。
+  CRM 每天凌晨 2 点(多伦多)自动跑:补转文字、导入 Zoom 会议文字稿、每人一份报告。
+- 约给别人(比如 Wallace)开的会不算进销售的出席率,单独一行显示。
+- 「在 CRM 打开客户」链接用 `CRM_PUBLIC_URL`,没配就用 `CRM_API_BASE`。
+
 ## 数据模型
 
 - `Department` — 部门(销售部 / 市场部 / 运营部)。
