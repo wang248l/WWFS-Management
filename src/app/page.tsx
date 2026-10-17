@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { loadTeam, hoursAgo, WINDOW_DAYS, type AgentRow, type AgentStatus } from "@/lib/team";
+import { fetchInsights } from "@/lib/calls";
 import { currentPeriod, previousPeriod, formatValue, computeDelta, formatDeltaPct, type Format } from "@/lib/metrics";
 
 export const dynamic = "force-dynamic";
@@ -162,7 +163,7 @@ async function monthlyStrip(deptKey: string) {
 }
 
 export default async function Daily() {
-  const { staffRows, agentRows, unlisted, alerts, crm, mkt, merged } = await loadTeam();
+  const [{ staffRows, agentRows, unlisted, alerts, crm, mkt, merged }, calls] = await Promise.all([loadTeam(), fetchInsights(90)]);
   const [salesKpi, mktKpi, opsKpi] = await Promise.all([monthlyStrip("sales"), monthlyStrip("marketing"), monthlyStrip("operations")]);
   const today = new Intl.DateTimeFormat("zh-CN", { timeZone: "America/Toronto", month: "long", day: "numeric", weekday: "long" }).format(new Date());
   const m = mkt.ok ? mkt.data.agents : null;
@@ -212,6 +213,30 @@ export default async function Daily() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* 通话分析：只摘每人一行（出席率 + 报告结论），点进去看每一通电话 */}
+      {calls.ok && calls.data.advisors.some((a) => a.funnel.booked > 0 || a.calls) && (
+        <Link href="/calls" className="card block divide-y divide-stone-100 hover:border-brand-300">
+          <div className="px-4 py-2 text-sm font-semibold flex justify-between">
+            <span>📞 通话分析 · 第一次会议出席率</span>
+            <span className="text-brand-700 font-normal">看每一通 →</span>
+          </div>
+          {calls.data.advisors
+            .filter((a) => a.funnel.booked > 0 || a.calls)
+            .map((a) => {
+              const rate = a.conv.phoneToZoom1;
+              const head = a.calls?.report?.report?.headline;
+              return (
+                <div key={a.userId} className="px-4 py-2.5 flex items-center gap-3 text-sm">
+                  <span className={"w-2.5 h-2.5 rounded-full shrink-0 " + (rate < 50 ? "bg-red-500" : rate < 70 ? "bg-amber-400" : "bg-emerald-500")} />
+                  <span className="font-semibold w-20 shrink-0">{a.name}</span>
+                  <span className="tabular-nums font-semibold w-12 shrink-0">{rate}%</span>
+                  <span className="text-stone-600 truncate">{head || `${a.calls?.stats.calls ?? 0} 通录音`}</span>
+                </div>
+              );
+            })}
+        </Link>
       )}
 
       {/* 3. 每人每 agent 一行 */}
