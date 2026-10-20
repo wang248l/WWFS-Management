@@ -13,6 +13,7 @@ import {
   type Format,
 } from "@/lib/metrics";
 import PeriodPicker from "../_components/PeriodPicker";
+import { syncAutoKpi } from "@/lib/autoKpi";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ export default async function Dashboard({ searchParams }: { searchParams: { peri
 
   const period = searchParams.period && isValidPeriod(searchParams.period) ? searchParams.period : currentPeriod();
   const prev = previousPeriod(period);
+  // 先从 CRM / Marketing 自动取这两个月的数（10 分钟内不重复取）
+  await syncAutoKpi([period, prev]);
 
   const periods = recentPeriods(12, currentPeriod());
   // ensure the selected period appears even if older than 12 months

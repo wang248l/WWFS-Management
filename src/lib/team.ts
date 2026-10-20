@@ -49,7 +49,7 @@ export type MktAgents = {
 
 type Source<T> = { ok: true; data: T } | { ok: false; error: string };
 
-async function getJson<T>(url: string, headers: Record<string, string>): Promise<Source<T>> {
+export async function getJson<T>(url: string, headers: Record<string, string>): Promise<Source<T>> {
   try {
     const res = await fetch(url, { headers, cache: "no-store", signal: AbortSignal.timeout(8000) });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
