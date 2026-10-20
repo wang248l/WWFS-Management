@@ -2,12 +2,15 @@ import { db } from "@/lib/db";
 import { currentPeriod, isValidPeriod, periodLabel, recentPeriods } from "@/lib/metrics";
 import PeriodPicker from "../_components/PeriodPicker";
 import DataEntry from "./DataEntry";
+import { syncAutoKpi } from "@/lib/autoKpi";
 
 export const dynamic = "force-dynamic";
 
 export default async function DataPage({ searchParams }: { searchParams: { period?: string } }) {
   const period =
     searchParams.period && isValidPeriod(searchParams.period) ? searchParams.period : currentPeriod();
+
+  await syncAutoKpi([period]);
 
   const periods = recentPeriods(12, currentPeriod());
   if (!periods.includes(period)) periods.push(period);

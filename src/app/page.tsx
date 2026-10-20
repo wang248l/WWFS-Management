@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { syncAutoKpi } from "@/lib/autoKpi";
 import { loadTeam, hoursAgo, WINDOW_DAYS, type AgentRow, type AgentStatus } from "@/lib/team";
 import { currentPeriod, previousPeriod, formatValue, computeDelta, formatDeltaPct, type Format } from "@/lib/metrics";
 
@@ -162,7 +163,10 @@ async function monthlyStrip(deptKey: string) {
 }
 
 export default async function Daily() {
-  const { staffRows, agentRows, unlisted, alerts, crm, mkt, merged } = await loadTeam();
+  const [{ staffRows, agentRows, unlisted, alerts, crm, mkt, merged }] = await Promise.all([
+    loadTeam(),
+    syncAutoKpi([currentPeriod(), previousPeriod(currentPeriod())]),
+  ]);
   const [salesKpi, mktKpi, opsKpi] = await Promise.all([monthlyStrip("sales"), monthlyStrip("marketing"), monthlyStrip("operations")]);
   const today = new Intl.DateTimeFormat("zh-CN", { timeZone: "America/Toronto", month: "long", day: "numeric", weekday: "long" }).format(new Date());
   const m = mkt.ok ? mkt.data.agents : null;

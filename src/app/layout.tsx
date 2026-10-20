@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getCurrentUser, canAccess } from "@/lib/auth";
+import MobileNav from "./_components/MobileNav";
 
 export const metadata: Metadata = {
   title: "WWFS 管理驾驶舱",
@@ -28,27 +29,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="zh">
       <body>
         {user && authorised ? (
-          <div className="min-h-screen flex flex-col md:flex-row">
-            <aside className="md:w-56 shrink-0 bg-stone-900 text-stone-100 flex flex-col">
-              <div className="px-4 py-3 md:px-6 md:py-5 border-b border-stone-800 flex items-center gap-3">
+          <div className="min-h-screen md:flex">
+            <MobileNav nav={NAV} userName={user.displayName || user.username} />
+            {/* 桌面端侧栏；手机上隐藏，用上面的 MobileNav 抽屉 */}
+            <aside className="hidden md:flex w-56 shrink-0 bg-stone-900 text-stone-100 flex-col">
+              <div className="px-6 py-5 border-b border-stone-800 flex items-center gap-3">
                 <img src="/icon.svg" alt="WWFS 管理" className="w-9 h-9 rounded-xl shadow-md shrink-0" />
                 <div>
                   <div className="text-base font-semibold">管理驾驶舱</div>
                   <div className="text-xs text-stone-400 mt-0.5">各部门经营数据</div>
                 </div>
               </div>
-              <nav className="md:flex-1 px-3 py-2 md:py-4 flex md:block gap-1 md:space-y-1 overflow-x-auto">
+              <nav className="flex-1 px-3 py-4 space-y-1">
                 {NAV.map((n) => (
                   <Link
                     key={n.href}
                     href={n.href}
-                    className="block shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-sm text-stone-200 hover:bg-stone-800 hover:text-white"
+                    className="block rounded-md px-3 py-2 text-sm text-stone-200 hover:bg-stone-800 hover:text-white"
                   >
                     {n.label}
                   </Link>
                 ))}
               </nav>
-              <div className="hidden md:block px-4 py-3 border-t border-stone-800 text-xs text-stone-400">
+              <div className="px-4 py-3 border-t border-stone-800 text-xs text-stone-400">
                 <div>
                   已登录: <span className="text-stone-200">{user.displayName || user.username}</span>
                 </div>
