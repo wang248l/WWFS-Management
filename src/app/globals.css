@@ -114,3 +114,6 @@
 @keyframes px-sway { from { transform: skewX(-3deg) } to { transform: skewX(3deg) } }
 @keyframes px-walk { 0% { transform: translateX(0) } 50% { transform: translateX(var(--hall, 500px)) } 100% { transform: translateX(0) } }
 @keyframes px-flip { 0% { transform: scaleX(1) } 50% { transform: scaleX(-1) } }
+.px-chick-walk { animation: px-chick 7s steps(28) infinite; }
+.px-chick-flip { transform-origin: center; animation: px-flip 7s steps(1) infinite; }
+@keyframes px-chick { 0%,10% { transform: translateX(0) } 50%,60% { transform: translateX(var(--run, 30px)) } 100% { transform: translateX(0) } }

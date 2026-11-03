@@ -79,15 +79,57 @@ const FACE_BUN = [
   ".OSSSMMSSSO.",
   "..OOSSSSOO..",
 ];
+// 2026-11-03 Wallace 要「冒险游戏男女主角」和「农场游戏主人公」的感觉——这里是同类风格的原创造型，不照搬任何游戏角色。
+// K 帽子 Y 帽檐/背带 R 帽带 W 帽徽
+const FACE_CAP = [
+  "..OOOOOOOO..",
+  ".OKKKKKKKKO.",
+  "OKKKKWWKKKKO",
+  "OYYYYYYYYYYO",
+  "OHSSSSSSSSHO",
+  "OSSESSSSESSO",
+  "OSSESSSSESSO",
+  "OSBSSSSSSBSO",
+  ".OSSSMMSSSO.",
+  "..OOSSSSOO..",
+];
+const FACE_BERET = [
+  "...OOOOOO...",
+  "..OKKKKKKOO.",
+  ".OKKKKKKKKKO",
+  "OHHHHHHHHHHO",
+  "OHSSSSSSSSHO",
+  "OHSESSSSESHO",
+  "OHSESSSSESHO",
+  "OHBSSSSSSBHO",
+  "OHHSSMMSSHHO",
+  "OHHOSSSSOHHO",
+];
+const FACE_STRAW = [
+  "...OOOOOO...",
+  "..OKKKKKKO..",
+  "..ORRRRRRO..",
+  "OKKKKKKKKKKO",
+  "OHSSSSSSSSHO",
+  "OSSESSSSESSO",
+  "OSSESSSSESSO",
+  "OSBSSSSSSBSO",
+  ".OSSSMMSSSO.",
+  "..OOSSSSOO..",
+];
+const BODY_PACK = [".OCCCCCCCCO.", "OCYCCCCCCYCO", "OCYCCCCCCYCO"];
+const BODY_OVERALLS = [".OCCCCCCCCO.", "OCDDCCCCDDCO", "OCDDDDDDDDCO"];
 const BODY = [".OCCCCCCCCO.", "OCCCDCCDCCCO", "OCCCCCCCCCCO"];
 const HANDS_A = ["OSSCCCCCCSSO"];
 const HANDS_B = ["OCCSSCCSSCCO"];
 
-type Look = { hair: string; skin: string; shirt: string; dark: string; face: string[]; glasses?: boolean };
+type Look = { hair: string; skin: string; shirt: string; dark: string; face: string[]; glasses?: boolean; body?: string[]; extra?: Record<string, string> };
 const LOOKS: Record<string, Look> = {
-  mark: { hair: "#2b2b3a", skin: "#f6c9a4", shirt: "#3b6fe0", dark: "#2a4fa8", face: FACE_SHORT, glasses: true },
-  mac: { hair: "#6b3f1f", skin: "#f3c19b", shirt: "#8f4fd8", dark: "#6633a8", face: FACE_SPIKY },
-  leo: { hair: "#d98b2b", skin: "#f6cfa8", shirt: "#f08a24", dark: "#b8611a", face: FACE_SPIKY },
+  // 社媒运营部：冒险少年（Mark）+ 冒险少女（Chase）
+  mark: { hair: "#2b2b3a", skin: "#f6c9a4", shirt: "#2f7fd0", dark: "#235e9c", face: FACE_CAP, body: BODY_PACK, extra: { K: "#1fa37a", Y: "#f2c230", W: "#ffffff" } },
+  mac: { hair: "#c2542f", skin: "#f8d2b4", shirt: "#f2f2f2", dark: "#d0d0d8", face: FACE_BERET, body: BODY_PACK, extra: { K: "#e0457b", Y: "#6b5bd6" } },
+  // 市场部：草帽农场主（Leo）
+  leo: { hair: "#8a5a2b", skin: "#f6cfa8", shirt: "#e8574a", dark: "#3d6fb8", face: FACE_STRAW, body: BODY_OVERALLS, extra: { K: "#f2cf6b", R: "#d9452f" } },
   recruit: { hair: "#1f1f2a", skin: "#f4c7a2", shirt: "#16a394", dark: "#0f766e", face: FACE_BUN },
   ryzen: { hair: "#555a66", skin: "#eebf98", shirt: "#64748b", dark: "#46505f", face: FACE_SHORT },
   amelia: { hair: "#3a2418", skin: "#f8d2b4", shirt: "#ec5f9e", dark: "#be3d77", face: FACE_LONG },
@@ -125,7 +167,7 @@ function Pixels({ rows, pal, x, y, className }: { rows: string[]; pal: Record<st
 
 function Person({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
   const L = lookFor(p.key === "mac" ? "mac" : p.key);
-  const pal: Record<string, string> = { O: "#2a1e1a", H: L.hair, S: L.skin, E: "#1a1420", B: "#f29a9a", M: "#b5525a", C: L.shirt, D: L.dark };
+  const pal: Record<string, string> = { O: "#2a1e1a", H: L.hair, S: L.skin, E: "#1a1420", B: "#f29a9a", M: "#b5525a", C: L.shirt, D: L.dark, ...(L.extra || {}) };
   const face = p.mood === "sleep" ? L.face.map((r, i) => (i === 5 ? r.replace(/E/g, "S") : i === 6 ? r.replace(/E/g, "E") : r)) : L.face;
   const happyMouth = p.mood === "happy";
   return (
@@ -145,7 +187,7 @@ function Person({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
           <rect x={x + 8 * P} y={y + 5 * P} width={P} height={2 * P} />
         </g>
       )}
-      <Pixels rows={BODY} pal={pal} x={x} y={y + 10 * P} />
+      <Pixels rows={L.body || BODY} pal={pal} x={x} y={y + 10 * P} />
       {p.mood === "work" || p.mood === "happy" ? (
         <>
           <Pixels rows={HANDS_A} pal={pal} x={x} y={y + 13 * P} className="px-frame-a" />
@@ -247,9 +289,116 @@ function Board({ x, y, label }: { x: number; y: number; label: string }) {
   );
 }
 
+
+// ---- 农场（市场部）：田、菜苗、栅栏、小鸡、向日葵、草垛、水壶，全是原创像素 ----
+function Crop({ x, y, kind, delay }: { x: number; y: number; kind: number; delay: number }) {
+  const leaf = kind === 2 ? "#5fbf4a" : "#3fae5a";
+  return (
+    <g className="px-sway" style={{ animationDelay: `${delay}s` }}>
+      {kind === 0 && (
+        <>
+          <rect x={x + 3} y={y + 1} width={2} height={5} fill={leaf} />
+          <rect x={x} y={y + 2} width={3} height={2} fill={leaf} />
+          <rect x={x + 5} y={y + 1} width={3} height={2} fill={leaf} />
+        </>
+      )}
+      {kind === 1 && (
+        <>
+          <rect x={x + 2} y={y + 5} width={5} height={4} fill="#f0f0f0" />
+          <rect x={x + 3} y={y + 8} width={3} height={2} fill="#c86b9a" />
+          <rect x={x + 3} y={y} width={1} height={5} fill={leaf} />
+          <rect x={x + 5} y={y + 1} width={1} height={4} fill={leaf} />
+        </>
+      )}
+      {kind === 2 && (
+        <>
+          <rect x={x + 3} y={y + 4} width={3} height={6} fill="#f08a24" />
+          <rect x={x + 2} y={y} width={2} height={4} fill={leaf} />
+          <rect x={x + 5} y={y} width={2} height={4} fill={leaf} />
+        </>
+      )}
+    </g>
+  );
+}
+function FarmPlot({ x, y }: { x: number; y: number }) {
+  const cells = [];
+  for (let r = 0; r < 3; r++)
+    for (let c = 0; c < 4; c++) {
+      cells.push(<rect key={`s${r}${c}`} x={x + c * 12} y={y + r * 12} width={11} height={11} fill={(r + c) % 2 ? "#7a4e2c" : "#6b4426"} />);
+      cells.push(<rect key={`l${r}${c}`} x={x + c * 12} y={y + r * 12 + 9} width={11} height={2} fill="#553519" />);
+      cells.push(<Crop key={`c${r}${c}`} x={x + c * 12 + 1} y={y + r * 12} kind={(r * 4 + c) % 3} delay={((r + c) % 3) * 0.4} />);
+    }
+  return <g>{cells}</g>;
+}
+function Fence({ x, y, n }: { x: number; y: number; n: number }) {
+  return (
+    <g>
+      <rect x={x} y={y + 4} width={n * 10} height={2} fill="#c9a06a" />
+      <rect x={x} y={y + 9} width={n * 10} height={2} fill="#c9a06a" />
+      {[...Array(n + 1)].map((_, i) => (
+        <g key={i}>
+          <rect x={x + i * 10 - 1} y={y} width={3} height={14} fill="#e2bd86" />
+          <rect x={x + i * 10 - 1} y={y + 12} width={3} height={2} fill="#9c7444" />
+        </g>
+      ))}
+    </g>
+  );
+}
+function Chicken({ x, y, w }: { x: number; y: number; w: number }) {
+  return (
+    <g className="px-chick-walk" style={{ ["--run" as any]: `${w}px` }}>
+      <g className="px-chick-flip">
+        <rect x={x} y={y + 3} width={8} height={6} fill="#ffffff" />
+        <rect x={x + 6} y={y} width={5} height={5} fill="#ffffff" />
+        <rect x={x + 7} y={y - 2} width={3} height={2} fill="#e5383b" />
+        <rect x={x + 11} y={y + 2} width={2} height={1} fill="#f2a62b" />
+        <rect x={x + 9} y={y + 1} width={1} height={1} fill="#2a1e1a" />
+        <rect x={x - 1} y={y + 3} width={2} height={3} fill="#e8e8e8" />
+        <rect x={x + 2} y={y + 9} width={1} height={2} fill="#f2a62b" className="px-frame-a" />
+        <rect x={x + 5} y={y + 9} width={1} height={2} fill="#f2a62b" className="px-frame-b" />
+      </g>
+    </g>
+  );
+}
+function Sunflower({ x, y }: { x: number; y: number }) {
+  return (
+    <g className="px-sway">
+      <rect x={x + 4} y={y + 8} width={2} height={14} fill="#3fae5a" />
+      <rect x={x + 6} y={y + 14} width={4} height={2} fill="#3fae5a" />
+      <rect x={x} y={y} width={10} height={10} fill="#f7c531" />
+      <rect x={x + 2} y={y - 2} width={6} height={14} fill="#f7c531" />
+      <rect x={x - 2} y={y + 2} width={14} height={6} fill="#f7c531" />
+      <rect x={x + 2} y={y + 2} width={6} height={6} fill="#7a4a1c" />
+    </g>
+  );
+}
+function HayBale({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={26} height={16} fill="#e8c35a" />
+      <rect x={x} y={y} width={26} height={3} fill="#f5d77d" />
+      <rect x={x + 7} y={y} width={2} height={16} fill="#b38a2e" />
+      <rect x={x + 17} y={y} width={2} height={16} fill="#b38a2e" />
+      <rect x={x + 3} y={y + 7} width={4} height={1} fill="#c9a540" />
+      <rect x={x + 20} y={y + 10} width={4} height={1} fill="#c9a540" />
+    </g>
+  );
+}
+function WateringCan({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y + 3} width={10} height={8} fill="#5b9bd5" />
+      <rect x={x + 10} y={y + 4} width={6} height={2} fill="#5b9bd5" />
+      <rect x={x + 15} y={y + 2} width={3} height={3} fill="#4a86bd" />
+      <rect x={x + 2} y={y} width={6} height={2} fill="#4a86bd" />
+      <rect x={x + 1} y={y + 5} width={8} height={1} fill="#8fc0ec" />
+    </g>
+  );
+}
+
 const ROOM_FLOOR: Record<string, [string, string]> = {
   社媒运营部: ["#d7e8f7", "#c9def2"],
-  市场部: ["#f7ebcf", "#f1e0b8"],
+  市场部: ["#8fd16a", "#82c75e"], // 草地
   增员部: ["#d4f0ea", "#c3e8e0"],
   内容部: ["#e6dcf5", "#dacdf0"],
   出镜顾问: ["#f8dce8", "#f2cddd"],
@@ -264,6 +413,7 @@ const HALL = 2 * TILE;
 function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
   const router = useRouter();
   const [f1, f2] = ROOM_FLOOR[room.name] || ["#ece6dc", "#e2dacd"];
+  const farm = room.name === "市场部";
   const tiles: JSX.Element[] = [];
   for (let ty = 2; ty < 9; ty++)
     for (let tx = 0; tx < 12; tx++)
@@ -285,8 +435,9 @@ function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y:
     <g>
       {tiles}
       {/* 墙 + 窗 + 钟 */}
-      <rect x={x} y={y} width={ROOM_W} height={2 * TILE} fill="#a77c5a" />
-      <rect x={x} y={y + 2 * TILE - 4} width={ROOM_W} height={4} fill="#7b573b" />
+      <rect x={x} y={y} width={ROOM_W} height={2 * TILE} fill={farm ? "#b5473a" : "#a77c5a"} />
+      {farm && [...Array(12)].map((_, i) => <rect key={"pl" + i} x={x + i * 16} y={y} width={1} height={2 * TILE} fill="#8f3329" />)}
+      <rect x={x} y={y + 2 * TILE - 4} width={ROOM_W} height={4} fill={farm ? "#f3efe6" : "#7b573b"} />
       <rect x={x + 20} y={y + 6} width={30} height={18} fill="#9fd6ff" stroke="#f3efe6" strokeWidth={2} />
       <rect x={x + 34} y={y + 6} width={2} height={18} fill="#f3efe6" />
       <rect x={x + 22} y={y + 8} width={8} height={3} fill="#ffffff" opacity={0.7} className="px-cloud" />
@@ -305,8 +456,23 @@ function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y:
       <rect x={x + ROOM_W / 2 - 12} y={y + ROOM_H - 3} width={24} height={4} fill={f1} />
 
       {/* 装饰 */}
-      <Plant x={x + 6} y={y + ROOM_H - 26} />
-      {room.name === "出镜顾问" ? <Camera x={x + ROOM_W - 52} y={y + ROOM_H - 30} /> : <Shelf x={x + ROOM_W - 34} y={y + ROOM_H - 28} />}
+      {farm ? (
+        <g>
+          <FarmPlot x={x + 8} y={y + 40} />
+          <WateringCan x={x + 14} y={y + 80} />
+          <Fence x={x + 136} y={y + 38} n={5} />
+          <Sunflower x={x + 140} y={y + 58} />
+          <Sunflower x={x + 172} y={y + 62} />
+          <HayBale x={x + ROOM_W - 34} y={y + ROOM_H - 22} />
+          <Chicken x={x + 10} y={y + ROOM_H - 18} w={44} />
+          <Chicken x={x + 140} y={y + 100} w={30} />
+        </g>
+      ) : (
+        <>
+          <Plant x={x + 6} y={y + ROOM_H - 26} />
+          {room.name === "出镜顾问" ? <Camera x={x + ROOM_W - 52} y={y + ROOM_H - 30} /> : <Shelf x={x + ROOM_W - 34} y={y + ROOM_H - 28} />}
+        </>
+      )}
 
       {slots.map((s, si) => {
         const sx = cx;
