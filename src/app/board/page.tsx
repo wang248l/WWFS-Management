@@ -14,10 +14,10 @@ export default async function BoardPage() {
       <div>
         <h1 className="text-2xl font-semibold">📋 Agent 看板</h1>
         <p className="mt-1 text-sm text-stone-600">
-          每张卡是一件事。宣发拿到联系方式的客户放「移交销售」，由销售接手。agent 值班时也会自己挪卡。
+          每张卡是一件事，由各个 agent 自己更新（只读）。宣发拿到联系方式的客户在「移交销售」，由销售经理 Bob 接手。
         </p>
       </div>
-      <TaskBoard tasks={tasks.map((t) => ({ ...t, updatedAt: t.updatedAt.toISOString() }))} agents={agents} />
+      <TaskBoard tasks={tasks.map((t) => ({ ...t, updatedAt: t.updatedAt.toISOString() }))} agents={agents} readOnly />
     </div>
   );
 }

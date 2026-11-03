@@ -95,48 +95,6 @@ export async function loadOffice() {
   };
 }
 
-/**
- * 在线回答：配了 ANTHROPIC_API_KEY 就让 Claude 以这个 agent 的身份当场回一句；
- * 没配就只留言，agent 下次值班时从 /api/agents/inbox 取走再回复。
- * 留言无论如何都标未读 —— 当场的回答只是「收到」，真要办的事还是值班时办。
- */
-export async function liveReply(agentId: string): Promise<string | null> {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return null;
-  const a = await db.agent.findUnique({
-    where: { id: agentId },
-    include: {
-      tasks: { where: { status: { not: "done" } }, orderBy: { updatedAt: "desc" }, take: 10 },
-      runs: { orderBy: { createdAt: "desc" }, take: 5 },
-      messages: { orderBy: { createdAt: "desc" }, take: 20 },
-    },
-  });
-  if (!a) return null;
-  const system = [
-    a.persona || `你是 ${a.name}，WWFS 的 AI 员工。职责：${a.duty || "未填写"}。`,
-    `排程：${a.schedule || "未填写"}；跑在：${a.host || "未填写"}；工作空间：${a.workspaceName || ""} ${a.workspaceUrl || "（还没有）"}。`,
-    `手上的任务：\n${a.tasks.map((t) => `- [${t.status}] ${t.title}${t.note ? `（${t.note}）` : ""}`).join("\n") || "（无）"}`,
-    `最近运行：\n${a.runs.map((r) => `- ${r.createdAt.toISOString().slice(0, 16)} ${r.status} ${r.task || ""} ${r.summary || ""}`).join("\n") || "（还没打过卡）"}`,
-    "你在 WWFS办公室 里跟老板 Wallace 对话。用中文，简短，像同事说话，不超过 4 句。",
-    "你现在不能当场执行操作：老板交代的事，说清楚你会在下次值班时做，并复述你理解的要求；不知道的不要编。",
-  ].join("\n\n");
-  const history = [...a.messages].reverse().map((m) => ({ role: m.fromRole === "owner" ? "user" : "assistant", content: m.text }));
-  while (history.length && history[0].role !== "user") history.shift();
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: process.env.OFFICE_MODEL || "claude-sonnet-5-5", max_tokens: 400, system, messages: history }),
-      signal: AbortSignal.timeout(30000),
-    });
-    if (!res.ok) return null;
-    const j = await res.json();
-    return (j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("").trim() || null;
-  } catch {
-    return null;
-  }
-}
-
 export function agentAuth(req: Request): string | null {
   const token = process.env.INGEST_TOKEN;
   if (!token) return "disabled (INGEST_TOKEN not set)";

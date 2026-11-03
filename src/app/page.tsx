@@ -18,6 +18,13 @@ export const dynamic = "force-dynamic";
 const PROMO_COLOR: Record<string, string> = { posts: "#3b82f6", impressions: "#6366f1", followers: "#ec4899", dms: "#f59e0b", leads: "#7c3aed", signups: "#10b981" };
 
 
+function ago(d: Date) {
+  const h = (Date.now() - d.getTime()) / 3600_000;
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))} 分钟前`;
+  if (h < 48) return `${Math.round(h)} 小时前`;
+  return `${Math.floor(h / 24)} 天前`;
+}
+
 export default async function Lobby() {
   const [{ departments, handoffCount, needs }, promo] = await Promise.all([loadOffice(), loadPromo()]);
   const officeAgents = departments.flatMap((d) => d.agents);
@@ -45,6 +52,16 @@ export default async function Lobby() {
       ...d.agents.map((a) => {
         const now = a.tasks.find((t) => t.status === "doing") || a.tasks.find((t) => t.status === "blocked") || a.tasks.find((t) => t.status === "todo");
         const mood = moodFor(a.needs ? "error" : a.status, a.happy);
+        const need = needs.find((n) => n.agentId === a.id);
+        const last = a.lastRun ? (a.lastRun.finishedAt || a.lastRun.createdAt) : null;
+        const lastTxt = last ? `${ago(last)}${a.lastRun?.task ? " · " + a.lastRun.task : ""}${a.lastRun?.status === "error" ? "（出错）" : ""}` : null;
+        const stuck = need
+          ? `${need.urgent ? "紧急" : "请求明天开会"}：${need.text.split("\n")[0]}`
+          : a.status === "late"
+            ? `超时没跑：应该${a.schedule || `每 ${a.everyHours} 小时`}跑一次，上次 ${last ? ago(last) : "从没跑过"}`
+            : a.status === "error"
+              ? `上次运行出错${a.lastRun?.summary ? "：" + a.lastRun.summary : ""}`
+              : null;
         return {
           key: a.key,
           name: a.name,
@@ -56,6 +73,11 @@ export default async function Lobby() {
           task: now?.title || null,
           unread: a.unread,
           shared: !!a.host?.includes("共用"),
+          schedule: a.schedule,
+          every: a.everyHours >= 24 && a.everyHours % 24 === 0 ? `每 ${a.everyHours / 24} 天一次` : `每 ${a.everyHours} 小时一次`,
+          lastRun: lastTxt,
+          host: a.host,
+          stuck,
         };
       }),
       ...d.staff.map((s) => ({
@@ -98,7 +120,7 @@ export default async function Lobby() {
       <div className="rise flex items-end justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">🏢 WWFS办公室</h1>
-          <p className="mt-1 text-sm text-stone-600">点一位同事进他的工位：打开他的工作空间、交代事情、看他手上的事。</p>
+          <p className="mt-1 text-sm text-stone-600">每个部门是不是在工作、产出了什么、谁卡住了，一眼看完。点一位同事看他的定时任务和汇报。</p>
         </div>
         <div className="flex gap-3 text-xs text-stone-500">
           <span>⌨️ 敲键盘 = 在岗</span>

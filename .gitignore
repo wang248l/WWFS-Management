@@ -11,3 +11,4 @@ prisma/*.db-journal
 .vscode
 .idea
 next-env.d.ts
+tsconfig.tsbuildinfo
