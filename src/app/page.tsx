@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { loadOffice, loadPromo, PROMO_FIELDS, STATUS_LABEL } from "@/lib/office";
-import DeskScene, { SharedDeskScene } from "./_components/DeskScene";
 import { moodFor } from "./_components/Avatar";
 import CountUp from "./_components/CountUp";
 import Sparkbars from "./_components/Sparkbars";
 import NeedsYou from "./_components/NeedsYou";
+import PixelOffice, { type PixelRoom } from "./_components/PixelOffice";
 
 export const dynamic = "force-dynamic";
 
@@ -15,23 +15,8 @@ export const dynamic = "force-dynamic";
  * 原来的「每日仪表盘」挪到 /dashboard。
  */
 
-const ROOM_TINT: Record<string, string> = {
-  社媒运营部: "from-sky-50", 运营部: "from-blue-50", 市场部: "from-amber-50", 增员部: "from-teal-50", 内容部: "from-purple-50", 出镜顾问: "from-pink-50", 销售部: "from-violet-50",
-};
 const PROMO_COLOR: Record<string, string> = { posts: "#3b82f6", impressions: "#6366f1", followers: "#ec4899", dms: "#f59e0b", leads: "#7c3aed", signups: "#10b981" };
 
-function Tags({ tags }: { tags: string | null }) {
-  if (!tags) return null;
-  return (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {tags.split(/[,，]/).filter(Boolean).map((t) => (
-        <span key={t} className="rounded-md bg-stone-100 text-stone-700 text-[11px] px-1.5 py-0.5">
-          {t}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 export default async function Lobby() {
   const [{ agents, departments, handoffCount, needs }, promo] = await Promise.all([loadOffice(), loadPromo()]);
@@ -52,6 +37,53 @@ export default async function Lobby() {
     return { ...f, total: has ? series.reduce((a: number, b) => a + (b || 0), 0) : null, series };
   });
 
+  // 像素办公室：每个部门一间房
+  const rooms: PixelRoom[] = departments.map((d) => ({
+    name: d.name,
+    people: [
+      ...d.agents.map((a) => {
+        const now = a.tasks.find((t) => t.status === "doing") || a.tasks.find((t) => t.status === "blocked") || a.tasks.find((t) => t.status === "todo");
+        const mood = moodFor(a.needs ? "error" : a.status, a.happy);
+        return {
+          key: a.key,
+          name: a.name,
+          title: a.title || "AI 员工",
+          tags: a.tags,
+          href: `/office/${a.key}`,
+          mood,
+          statusLabel: a.needs ? `有 ${a.needs} 件事找你` : STATUS_LABEL[a.status].label,
+          task: now?.title || null,
+          unread: a.unread,
+          shared: !!a.host?.includes("共用"),
+        };
+      }),
+      ...d.staff.map((s) => ({
+        key: s.name.toLowerCase(),
+        name: s.name,
+        title: s.role || "员工",
+        tags: null,
+        href: s.workspaceUrl || "/team",
+        external: !!s.workspaceUrl,
+        mood: "work" as const,
+        statusLabel: "工作空间：CRM",
+        task: null,
+        unread: 0,
+      })),
+      ...d.openSeats.map((s) => ({
+        key: "seat-" + s.title,
+        name: s.title,
+        title: s.note,
+        tags: null,
+        href: "/board",
+        mood: "sleep" as const,
+        statusLabel: "招聘中",
+        task: null,
+        unread: 0,
+        seat: true,
+      })),
+    ],
+  }));
+
   const tiles = [
     { label: "在岗", value: onDuty, suffix: `/${active.length}`, icon: "🟢", tone: "text-emerald-600" },
     { label: "进行中", value: doing, icon: "⚙️", tone: "text-blue-600" },
@@ -65,14 +97,18 @@ export default async function Lobby() {
       <div className="rise flex items-end justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">🏢 WWFS办公室</h1>
-          <p className="mt-1 text-sm text-stone-600">点一个工位进去：打开他的工作空间、跟他说话、看他手上的事。</p>
+          <p className="mt-1 text-sm text-stone-600">点一位同事进他的工位：打开他的工作空间、交代事情、看他手上的事。</p>
         </div>
         <div className="flex gap-3 text-xs text-stone-500">
-          <span>🙂 在岗干活</span>
-          <span>😴 未上岗</span>
-          <span>😰 超时 / 出错</span>
-          <span>🤩 有好消息</span>
+          <span>⌨️ 敲键盘 = 在岗</span>
+          <span>💤 = 未上岗</span>
+          <span>❗ = 找你 / 出错</span>
+          <span>💬 = 有留言没看</span>
         </div>
+      </div>
+
+      <div className="rise">
+        <PixelOffice rooms={rooms} />
       </div>
 
       <NeedsYou needs={needs} />
@@ -112,110 +148,6 @@ export default async function Lobby() {
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {departments.map((d, di) => (
-          <section
-            key={d.name}
-            className="rise room-floor rounded-2xl border-2 border-stone-200 overflow-hidden relative"
-            style={{ animationDelay: `${450 + di * 90}ms` }}
-          >
-            <div className={"bg-gradient-to-b to-transparent " + (ROOM_TINT[d.name] || "from-stone-50")}>
-              <div className="flex items-center justify-between px-4 pt-3">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/90 shadow-sm border border-stone-200 px-3 py-1">
-                  <span className="text-lg">{d.icon}</span>
-                  <span className="font-semibold">{d.name}</span>
-                  <span className="text-xs text-stone-400">{d.agents.length + d.staff.length} 人</span>
-                </div>
-                <span className="text-xl" aria-hidden>
-                  🪴
-                </span>
-              </div>
-              <div className="grid gap-3 p-4 sm:grid-cols-2">
-                {(() => {
-                  const shared = d.agents.filter((a) => a.host?.includes("共用"));
-                  if (shared.length < 2) return null;
-                  return (
-                    <div className="desk-card sm:col-span-2 rounded-xl bg-white/95 border border-stone-200 p-3">
-                      <SharedDeskScene people={shared.map((a) => ({ who: a.key, mood: moodFor(a.needs ? "error" : a.status, a.happy) }))} />
-                      <div className="text-center text-[11px] text-stone-500 -mt-1 mb-2">🖥️ 共用一台 Mac mini</div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {shared.map((a) => {
-                          const st = STATUS_LABEL[a.status];
-                          const now = a.tasks.find((t) => t.status === "doing") || a.tasks.find((t) => t.status === "blocked") || a.tasks.find((t) => t.status === "todo");
-                          return (
-                            <Link key={a.id} href={`/office/${a.key}`} className="relative rounded-lg hover:bg-stone-50 p-2 text-center">
-                              <div className="font-bold text-base">
-                                {a.name}{" "}
-                                <span className={"badge align-middle " + st.cls}>
-                                  <span className={"pulse-dot w-1.5 h-1.5 rounded-full mr-1 " + st.dot} />
-                                  {st.label}
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-stone-500">{a.title}</div>
-                              <div className="flex justify-center"><Tags tags={a.tags} /></div>
-                              <div className="text-xs mt-1.5 line-clamp-2 text-stone-700">{now ? now.title : <span className="text-stone-400">手上没事</span>}</div>
-                              <div className="text-xs text-brand-700 mt-1">进工位 →</div>
-                              {a.unread > 0 && (
-                                <span className="absolute top-0 right-0 rounded-full bg-red-500 text-white text-xs font-bold w-6 h-6 grid place-items-center shadow animate-bounce">{a.unread}</span>
-                              )}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-                {d.agents.filter((a) => !(a.host?.includes("共用") && d.agents.filter((x) => x.host?.includes("共用")).length >= 2)).map((a) => {
-                  const st = STATUS_LABEL[a.status];
-                  const now = a.tasks.find((t) => t.status === "doing") || a.tasks.find((t) => t.status === "blocked") || a.tasks.find((t) => t.status === "todo");
-                  return (
-                    <Link key={a.id} href={`/office/${a.key}`} className="desk-card relative rounded-xl bg-white/95 border border-stone-200 p-3 flex gap-2 items-end">
-                      <DeskScene who={a.key} mood={moodFor(a.needs ? "error" : a.status, a.happy)} />
-                      <div className="min-w-0 flex-1 pb-1">
-                        <div className="font-bold text-base truncate">{a.name}</div>
-                        <div className="text-[11px] text-stone-500 truncate">{a.title || "AI 员工"}</div>
-                        <Tags tags={a.tags} />
-                        <span className={"badge mt-1 " + st.cls}>
-                          <span className={"pulse-dot w-1.5 h-1.5 rounded-full mr-1 " + st.dot} />
-                          {st.label}
-                        </span>
-                        <div className="text-xs mt-1.5 line-clamp-2 text-stone-700">{now ? now.title : <span className="text-stone-400">手上没事</span>}</div>
-                      </div>
-                      {a.unread > 0 && (
-                        <span className="absolute -top-2 -right-2 rounded-full bg-red-500 text-white text-xs font-bold w-6 h-6 grid place-items-center shadow animate-bounce">
-                          {a.unread}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-                {d.staff.map((s) => (
-                  <a key={s.id} href={s.workspaceUrl || "#"} target="_blank" rel="noreferrer" className="desk-card rounded-xl bg-white/95 border border-stone-200 p-3 flex gap-2 items-end">
-                    <DeskScene who={s.name} mood="work" human />
-                    <div className="min-w-0 pb-1">
-                      <div className="font-bold">{s.name}</div>
-                      <div className="text-[11px] text-stone-500">{s.role || "员工"}</div>
-                      <div className="text-xs text-brand-700 mt-1.5">{s.workspaceUrl ? "工作空间：CRM ↗" : "工作空间待建"}</div>
-                    </div>
-                  </a>
-                ))}
-                {d.openSeats.map((s) => (
-                  <Link key={s.title} href="/board" className="desk-card rounded-xl border-2 border-dashed border-violet-300 bg-white/60 p-3 flex gap-2 items-end">
-                    <div className="w-[112px] h-[104px] shrink-0 grid place-items-center text-5xl opacity-70">🪑</div>
-                    <div className="pb-1">
-                      <div className="font-bold">
-                        {s.title} <span className="badge bg-amber-100 text-amber-700 ml-1">招聘中</span>
-                      </div>
-                      <div className="text-[11px] text-stone-500 mt-0.5">{s.note}</div>
-                      <div className="text-xs text-violet-700 mt-1.5 font-medium">待接手客户 {handoffCount} 个 →</div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        ))}
-      </div>
     </div>
   );
 }

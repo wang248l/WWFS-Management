@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=DotGothic16&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -75,3 +76,41 @@
 @keyframes pulse-dot { 0% { box-shadow: 0 0 0 0 currentColor } 100% { box-shadow: 0 0 0 7px transparent } }
 @keyframes bar-grow { from { transform: scaleY(0) } to { transform: scaleY(1) } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ---- 像素办公室（2026-11-03 Wallace：「做成像素风格的，真的画一个办公室出来」）---- */
+.px-font { font-family: "DotGothic16", "PingFang SC", monospace; }
+.px-dialog { font-family: "DotGothic16", "PingFang SC", monospace; }
+.px-office svg g { transform-box: fill-box; }
+.px-bob { animation: px-bob 1.2s steps(2) infinite; }
+.px-bob.px-slow { animation-duration: 3s; }
+.px-frame-a { animation: px-a .4s steps(1) infinite; }
+.px-frame-b { animation: px-b .4s steps(1) infinite; }
+.px-blink { opacity: 0; animation: px-blink 4s steps(1) infinite; }
+.px-screen { animation: px-screen 1.6s steps(3) infinite; }
+.px-code { animation: px-code 1.2s steps(4) infinite; }
+.px-zzz text { animation: px-zzz 2.4s steps(6) infinite; }
+.px-zzz text:nth-child(2) { animation-delay: 1.2s; }
+.px-bang { animation: px-bang .8s steps(2) infinite; }
+.px-twinkle { animation: px-blinkon 1s steps(2) infinite; }
+.px-rec { animation: px-blinkon 1s steps(2) infinite; }
+.px-cloud { animation: px-cloud 9s steps(18) infinite alternate; }
+.px-sway { transform-origin: bottom center; animation: px-sway 3s steps(3) infinite alternate; }
+.px-cursor { opacity: 0; }
+.px-person:hover .px-cursor { opacity: 1; animation: px-bang .6s steps(2) infinite; }
+.px-person:hover .px-bob { animation-duration: .5s; }
+.px-cat-walk { animation: px-walk 16s steps(64) infinite; }
+.px-cat-flip { transform-origin: center; animation: px-flip 16s steps(1) infinite; }
+.px-caret { animation: px-blinkon 1s steps(2) infinite; }
+@keyframes px-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-1px) } }
+@keyframes px-a { 0% { opacity: 1 } 50% { opacity: 0 } }
+@keyframes px-b { 0% { opacity: 0 } 50% { opacity: 1 } }
+@keyframes px-blink { 0%,93% { opacity: 0 } 95% { opacity: 1 } 98% { opacity: 0 } }
+@keyframes px-screen { 0%,100% { opacity: 1 } 50% { opacity: .75 } }
+@keyframes px-code { 0% { transform: scaleX(.3) } 100% { transform: scaleX(1) } }
+@keyframes px-zzz { 0% { opacity: 0; transform: translate(0,3px) } 30% { opacity: 1 } 100% { opacity: 0; transform: translate(4px,-8px) } }
+@keyframes px-bang { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-2px) } }
+@keyframes px-blinkon { 0%,100% { opacity: 1 } 50% { opacity: 0 } }
+@keyframes px-cloud { from { transform: translateX(0) } to { transform: translateX(16px) } }
+@keyframes px-sway { from { transform: skewX(-3deg) } to { transform: skewX(3deg) } }
+@keyframes px-walk { 0% { transform: translateX(0) } 50% { transform: translateX(var(--hall, 500px)) } 100% { transform: translateX(0) } }
+@keyframes px-flip { 0% { transform: scaleX(1) } 50% { transform: scaleX(-1) } }
