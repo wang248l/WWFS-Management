@@ -4,6 +4,7 @@ import DeskScene, { SharedDeskScene } from "./_components/DeskScene";
 import { moodFor } from "./_components/Avatar";
 import CountUp from "./_components/CountUp";
 import Sparkbars from "./_components/Sparkbars";
+import NeedsYou from "./_components/NeedsYou";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ function Tags({ tags }: { tags: string | null }) {
 }
 
 export default async function Lobby() {
-  const [{ agents, departments, handoffCount }, promo] = await Promise.all([loadOffice(), loadPromo()]);
+  const [{ agents, departments, handoffCount, needs }, promo] = await Promise.all([loadOffice(), loadPromo()]);
   const active = agents.filter((a) => a.active);
   const onDuty = active.filter((a) => a.status === "ok").length;
   const doing = agents.reduce((n, a) => n + a.tasks.filter((t) => t.status === "doing").length, 0);
@@ -73,6 +74,8 @@ export default async function Lobby() {
           <span>🤩 有好消息</span>
         </div>
       </div>
+
+      <NeedsYou needs={needs} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {tiles.map((s, i) => (
@@ -133,7 +136,7 @@ export default async function Lobby() {
                   if (shared.length < 2) return null;
                   return (
                     <div className="desk-card sm:col-span-2 rounded-xl bg-white/95 border border-stone-200 p-3">
-                      <SharedDeskScene people={shared.map((a) => ({ who: a.key, mood: moodFor(a.status, a.happy) }))} />
+                      <SharedDeskScene people={shared.map((a) => ({ who: a.key, mood: moodFor(a.needs ? "error" : a.status, a.happy) }))} />
                       <div className="text-center text-[11px] text-stone-500 -mt-1 mb-2">🖥️ 共用一台 Mac mini</div>
                       <div className="grid grid-cols-2 gap-3">
                         {shared.map((a) => {
@@ -167,7 +170,7 @@ export default async function Lobby() {
                   const now = a.tasks.find((t) => t.status === "doing") || a.tasks.find((t) => t.status === "blocked") || a.tasks.find((t) => t.status === "todo");
                   return (
                     <Link key={a.id} href={`/office/${a.key}`} className="desk-card relative rounded-xl bg-white/95 border border-stone-200 p-3 flex gap-2 items-end">
-                      <DeskScene who={a.key} mood={moodFor(a.status, a.happy)} />
+                      <DeskScene who={a.key} mood={moodFor(a.needs ? "error" : a.status, a.happy)} />
                       <div className="min-w-0 flex-1 pb-1">
                         <div className="font-bold text-base truncate">{a.name}</div>
                         <div className="text-[11px] text-stone-500 truncate">{a.title || "AI 员工"}</div>

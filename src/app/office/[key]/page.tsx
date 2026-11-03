@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { agentStatus, loadPromo, PROMO_AGENTS, PROMO_FIELDS, STATUS_LABEL } from "@/lib/office";
 import TaskBoard from "../../_components/TaskBoard";
 import Chat from "./Chat";
+import NeedsYou from "../../_components/NeedsYou";
+import ProjectLink from "./ProjectLink";
+import { loadSkills } from "@/lib/skills";
 import Avatar, { moodFor } from "../../_components/Avatar";
 import CountUp from "../../_components/CountUp";
 import Sparkbars from "../../_components/Sparkbars";
@@ -25,11 +28,17 @@ export default async function Desk({ params }: { params: { key: string } }) {
     },
   });
   if (!a) notFound();
-  const status = agentStatus(a, a.runs[0]);
+  const needs = a.messages
+    .filter((m) => m.fromRole === "agent" && (m.kind === "blocker" || m.kind === "meeting") && !m.resolvedAt)
+    .map((m) => ({ ...m, agent: { key: a.key, name: a.name, avatar: a.avatar } }));
+  const status = needs.length ? "error" : agentStatus(a, a.runs[0]);
   const st = STATUS_LABEL[status];
   const happy = a.tasks.some((t) => (t.status === "done" || t.status === "handoff") && Date.now() - t.updatedAt.getTime() < 86400_000);
   const promo = PROMO_AGENTS.includes(a.key) ? (await loadPromo([a.key]))[a.key] : null;
   const me = { key: a.key, name: a.name, avatar: a.avatar };
+  const skills = await loadSkills(a.skills);
+  const lastTrained = skills.items.map((i) => i.date).filter(Boolean).sort().pop() || null;
+  const daysSince = lastTrained ? Math.floor((Date.now() - Date.parse(lastTrained)) / 86400_000) : null;
 
   return (
     <div className="space-y-5">
@@ -67,6 +76,8 @@ export default async function Desk({ params }: { params: { key: string } }) {
         )}
       </div>
 
+      <NeedsYou needs={needs} link={false} />
+
       {promo && (
         <section className="card p-4">
           <div className="flex items-baseline justify-between">
@@ -94,7 +105,8 @@ export default async function Desk({ params }: { params: { key: string } }) {
           agentKey={a.key}
           agentName={a.name}
           avatar={a.avatar || "🤖"}
-          initial={a.messages.map((m) => ({ ...m, readAt: m.readAt?.toISOString() || null, createdAt: m.createdAt.toISOString() }))}
+          initial={a.messages.map((m) => ({ id: m.id, fromRole: m.fromRole, kind: m.kind, urgent: m.urgent, text: m.text, readAt: m.readAt?.toISOString() || null, createdAt: m.createdAt.toISOString() }))}
+          canRun={!!a.host?.includes("Mac")}
         />
         <section className="card p-4">
           <h2 className="font-semibold mb-2">最近打卡</h2>
@@ -115,6 +127,54 @@ export default async function Desk({ params }: { params: { key: string } }) {
           </ul>
         </section>
       </div>
+
+
+      <section className="card p-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="font-semibold">🎓 培训 · 技能</h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              培训 = 在 {a.name} 的 project 里用 Claude 改他的 skill。改完提交，这里自动显示新版本。
+            </p>
+          </div>
+          <ProjectLink agentKey={a.key} name={a.name} url={a.projectUrl} />
+        </div>
+        <div className="grid grid-cols-3 gap-3 mt-3">
+          <div className="rounded-lg bg-stone-50 px-3 py-2">
+            <div className="text-2xl font-bold tabular-nums">{skills.items.length}</div>
+            <div className="text-[11px] text-stone-500">技能</div>
+          </div>
+          <div className="rounded-lg bg-stone-50 px-3 py-2">
+            <div className={"text-2xl font-bold " + (daysSince !== null && daysSince > 14 ? "text-amber-600" : "")}>
+              {daysSince === null ? "—" : daysSince === 0 ? "今天" : `${daysSince} 天前`}
+            </div>
+            <div className="text-[11px] text-stone-500">上次培训</div>
+          </div>
+          <div className="rounded-lg bg-stone-50 px-3 py-2">
+            <div className="text-2xl font-bold">{a.projectUrl ? "✅" : "⏳"}</div>
+            <div className="text-[11px] text-stone-500">培训 project</div>
+          </div>
+        </div>
+        {skills.items.length ? (
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {skills.items.map((k) => (
+              <li key={k.folder}>
+                <a href={k.url} target="_blank" rel="noreferrer" className="desk-card block rounded-lg border border-stone-200 bg-white px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-medium truncate">📘 {k.folder}</span>
+                    {k.sha && <span className="ml-auto badge bg-brand-50 text-brand-700 font-mono">v·{k.sha}</span>}
+                  </div>
+                  <div className="text-[11px] text-stone-500 mt-0.5 truncate">
+                    {k.date ? `${k.date.slice(0, 10)} · ${k.message} · 共改过 ${k.commits}${k.commits === 30 ? "+" : ""} 次` : skills.connected ? "仓库里还没有这个文件夹" : "版本信息要配 GITHUB_TOKEN"}
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-stone-400 mt-3">还没指定技能文件夹。</p>
+        )}
+      </section>
 
       <section>
         <h2 className="text-lg font-semibold mb-2">📋 {a.name} 的看板</h2>

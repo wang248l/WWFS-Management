@@ -121,6 +121,9 @@ model Agent {
   workspaceUrl String? // 他自己的工作空间
   workspaceName String?
   persona      String? // 在线对话时的人设与边界（给 Claude 的 system prompt）
+  // 培训（2026-11-03 Wallace：「培训的过程就是用 Claude 去改这些 agent 的 skill，我会给每一个员工建立一个 project」）
+  skills       String? // wang248l/agent-skills 里的文件夹，逗号分隔：wwfs-edit-koubo,wwfs-publish-shortvideo
+  projectUrl   String? // 这个员工的培训 project 链接；空 = 待建
   active     Boolean    @default(true)
   order      Int        @default(0)
   createdAt  DateTime   @default(now())
@@ -152,8 +155,15 @@ model AgentMessage {
   id        String    @id @default(cuid())
   agentId   String
   fromRole  String // owner | agent
+  // 2026-11-03 Wallace：「告诉 Chase 改一下剪辑方法……完成不了就报错，第二天请求跟我开会，或者随时找我」
+  // owner: chat 聊天 | instruction 交给他做（Mac 上的 runner 会执行）
+  // agent: chat | progress 进度/完成 | blocker 卡住了 | meeting 请求开会
+  kind      String    @default("chat")
+  urgent    Boolean   @default(false) // blocker/meeting：true = 随时找老板，false = 第二天开会
+  taskId    String? // 对应看板上的卡
   text      String
-  readAt    DateTime?
+  readAt    DateTime? // owner 消息：agent 取走的时间
+  resolvedAt DateTime? // blocker/meeting：老板点了「已处理」
   createdAt DateTime  @default(now())
 
   agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)

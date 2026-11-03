@@ -44,7 +44,7 @@ export function agentStatus(a: { active: boolean; everyHours: number; graceHours
 }
 
 export async function loadOffice() {
-  const [agents, staff] = await Promise.all([
+  const [agents, staff, needs] = await Promise.all([
     db.agent.findMany({
       orderBy: [{ order: "asc" }, { name: "asc" }],
       include: {
@@ -54,12 +54,18 @@ export async function loadOffice() {
       },
     }),
     db.staff.findMany({ where: { active: true }, orderBy: [{ order: "asc" }, { name: "asc" }] }),
+    db.agentMessage.findMany({
+      where: { fromRole: "agent", kind: { in: ["blocker", "meeting"] }, resolvedAt: null },
+      orderBy: [{ urgent: "desc" }, { createdAt: "desc" }],
+      include: { agent: { select: { key: true, name: true, avatar: true } } },
+    }),
   ]);
   const agentRows = agents.map((a) => ({
     ...a,
     status: agentStatus(a, a.runs[0]),
     lastRun: a.runs[0] || null,
     unread: a.messages.length,
+    needs: needs.filter((n) => n.agentId === a.id).length,
     // 24 小时内有卡挪到「完成」或「移交销售」= 有好消息，小人开心跳一下
     happy: a.tasks.some((t) => (t.status === "done" || t.status === "handoff") && Date.now() - t.updatedAt.getTime() < 86400_000),
   }));
@@ -81,6 +87,7 @@ export async function loadOffice() {
       staff: staff.filter((s) => (s.department || "未分部门") === d),
       openSeats: OPEN_SEATS.filter((s) => s.department === d),
     })),
+    needs,
     handoffCount: agentRows.reduce((n, a) => n + a.tasks.filter((t) => t.status === "handoff").length, 0),
   };
 }

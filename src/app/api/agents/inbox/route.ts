@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 import { agentAuth } from "@/lib/office";
 
 /**
- * GET /api/agents/inbox?agent=mark — agent 值班时取老板在办公室里留给他的未读消息（Bearer INGEST_TOKEN）。
- * 不会自动标已读：办完用 POST /api/agents/reply 回复并带上 ack。
+ * GET /api/agents/inbox?agent=mac — agent 取老板留给他的未读消息（Bearer INGEST_TOKEN）。
+ * 每条带 kind（chat / instruction）和 taskId。不会自动标已读：用 POST /api/agents/reply 带 ack。
  */
 export async function GET(req: NextRequest) {
   const err = agentAuth(req);
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const messages = await db.agentMessage.findMany({
     where: { agentId: agent.id, fromRole: "owner", readAt: null },
     orderBy: { createdAt: "asc" },
-    select: { id: true, text: true, createdAt: true },
+    select: { id: true, kind: true, text: true, taskId: true, createdAt: true },
   });
   return NextResponse.json({ agent: agent.key, messages });
 }

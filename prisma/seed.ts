@@ -141,13 +141,14 @@ async function main() {
   //     「Mark 的工作空间就是我们的 marketing 网站」）。新 agent 直接建；已有的只补空字段，名单页改过的不覆盖。
   //     看板上的起始任务只在这个 agent 一张卡都没有时放进去。
   const OFFICE: {
-    key: string; name: string; department: string; title: string; avatar: string; tags?: string;
+    key: string; name: string; department: string; title: string; avatar: string; tags?: string; skills?: string;
     workspaceUrl?: string; workspaceName?: string; duty?: string; host?: string; schedule?: string;
     everyHours?: number; tokenMatch?: string; persona?: string; order?: number;
     tasks: { title: string; status: string; note?: string }[];
   }[] = [
     {
       key: "mark", name: "Mark", department: "社媒运营部", title: "社交媒体总运营", avatar: "🧭", order: 0,
+      skills: "wwfs-agent-socialops,wwfs-ops-daily,wwfs-daily-editor,wwfs-scriptgen-ip,wwfs-scriptgen-marketing",
       tags: "出稿,分配,数据分析",
       workspaceUrl: "https://marketing.wallacewang.ca", workspaceName: "Marketing 网站",
       duty: "社交媒体总运营：出稿、分配给各 IP、看数据做分析；Marketing 网站值班，处理不了的报告老板；留资客户移交销售",
@@ -161,6 +162,7 @@ async function main() {
     },
     {
       key: "leo", name: "Leo", department: "市场部", title: "产品推广 & 网课", avatar: "🎓", order: 1,
+      skills: "wwfs-agent-pr,wwfs-scriptgen-longvideo",
       tags: "产品推广,网课",
       duty: "线上产品推广和网课：选题、大纲、推广素材、上线节奏；只做线上宣发，留资客户移交销售",
       host: "待定", schedule: "待定", everyHours: 24,
@@ -174,6 +176,7 @@ async function main() {
     },
     {
       key: "recruit", name: "增员员", department: "增员部", title: "增员专员 · LinkedIn", avatar: "🤝", order: 2,
+      skills: "wwfs-agent-recruiter",
       tags: "找人,预热,约见",
       workspaceUrl: "https://www.linkedin.com/mynetwork/", workspaceName: "LinkedIn",
       duty: "在 LinkedIn 找持牌 / 快持牌的华人顾问和 CFP（先 AB），预热、约见；只讲职业平台，不讲副业收入",
@@ -187,6 +190,7 @@ async function main() {
     {
       // 打卡 key 仍是 mac（Mac 上的脚本都用这个），名字 2026-11-03 起叫 Chase
       key: "mac", name: "Chase", department: "社媒运营部", title: "剪辑 & 发布", avatar: "🎬", order: 1,
+      skills: "wwfs-edit-koubo,wwfs-publish-shortvideo,wwfs-covergen-finance,wwfs-covergen-lifestyle",
       tags: "剪辑,发布",
       workspaceUrl: "https://claude.ai/artifact/WydxxqTJb67qRmB3dLj2mn", workspaceName: "视频进度看板",
       duty: "口播剪辑（1080p60、封面、字幕）和各平台发布（手机 + 网页）",
