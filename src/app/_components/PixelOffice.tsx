@@ -131,6 +131,9 @@ const LOOKS: Record<string, Look> = {
   // 市场部：草帽农场主（Leo）
   leo: { hair: "#8a5a2b", skin: "#f6cfa8", shirt: "#e8574a", dark: "#3d6fb8", face: FACE_STRAW, body: BODY_OVERALLS, extra: { K: "#f2cf6b", R: "#d9452f" } },
   recruit: { hair: "#1f1f2a", skin: "#f4c7a2", shirt: "#16a394", dark: "#0f766e", face: FACE_BUN },
+  // 销售经理 Bob：西装领带；会计 Tina：眼镜 + 发髻
+  bob: { hair: "#4a3424", skin: "#f1c29c", shirt: "#2f3a5c", dark: "#d9452f", face: FACE_SHORT, body: [".OCCCWWCCCO.", "OCCCWDDWCCCO", "OCCCCDDCCCCO"], extra: { W: "#ffffff" } },
+  tina: { hair: "#2a1a14", skin: "#f8d5b8", shirt: "#4c9a6a", dark: "#357350", face: FACE_BUN, glasses: true },
   ryzen: { hair: "#555a66", skin: "#eebf98", shirt: "#64748b", dark: "#46505f", face: FACE_SHORT },
   amelia: { hair: "#3a2418", skin: "#f8d2b4", shirt: "#ec5f9e", dark: "#be3d77", face: FACE_LONG },
   ishan: { hair: "#15151c", skin: "#b9805a", shirt: "#2f9e57", dark: "#21763f", face: FACE_SHORT },
@@ -396,6 +399,59 @@ function WateringCan({ x, y }: { x: number; y: number }) {
   );
 }
 
+
+function ChartBoard({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={38} height={26} fill="#fffdf4" stroke="#55555f" strokeWidth={2} />
+      <rect x={x + 5} y={y + 16} width={5} height={6} fill="#4f7fd9" />
+      <rect x={x + 13} y={y + 12} width={5} height={10} fill="#4f7fd9" />
+      <rect x={x + 21} y={y + 8} width={5} height={14} fill="#4f7fd9" />
+      <rect x={x + 29} y={y + 4} width={5} height={18} fill="#2f9e57" className="px-blinkon-slow" />
+      <rect x={x + 17} y={y + 26} width={2} height={8} fill="#55555f" />
+    </g>
+  );
+}
+function Cabinet({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={22} height={28} fill="#8c96a6" />
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <rect x={x + 2} y={y + 2 + i * 9} width={18} height={7} fill="#a9b2c0" />
+          <rect x={x + 8} y={y + 4 + i * 9} width={6} height={2} fill="#55555f" />
+        </g>
+      ))}
+      <rect x={x + 26} y={y + 14} width={12} height={14} fill="#3d3d4a" />
+      <rect x={x + 28} y={y + 16} width={8} height={3} fill="#9fe08a" />
+      <rect x={x + 28} y={y + 21} width={2} height={2} fill="#d0d0d8" />
+      <rect x={x + 31} y={y + 21} width={2} height={2} fill="#d0d0d8" />
+      <rect x={x + 34} y={y + 21} width={2} height={2} fill="#f2a62b" />
+      <rect x={x + 28} y={y + 24} width={2} height={2} fill="#d0d0d8" />
+      <rect x={x + 31} y={y + 24} width={2} height={2} fill="#d0d0d8" />
+    </g>
+  );
+}
+function MeetingTable({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <rect x={x + 10 + i * 34} y={y - 12} width={16} height={10} fill="#a8876a" />
+          <rect x={x + 10 + i * 34} y={y + 34} width={16} height={10} fill="#a8876a" />
+        </g>
+      ))}
+      <rect x={x} y={y} width={112} height={30} fill="#8a5a33" />
+      <rect x={x} y={y} width={112} height={3} fill="#b07a48" />
+      <rect x={x + 20} y={y + 10} width={10} height={8} fill="#f6f1e1" />
+      <rect x={x + 80} y={y + 12} width={8} height={6} fill="#f2f2f2" />
+      <text x={x + 56} y={y + 21} textAnchor="middle" fontSize={8} fill="#fff8e7" className="px-font">
+        开会请到这里
+      </text>
+    </g>
+  );
+}
+
 const ROOM_FLOOR: Record<string, [string, string]> = {
   社媒运营部: ["#d7e8f7", "#c9def2"],
   市场部: ["#8fd16a", "#82c75e"], // 草地
@@ -403,6 +459,8 @@ const ROOM_FLOOR: Record<string, [string, string]> = {
   内容部: ["#e6dcf5", "#dacdf0"],
   出镜顾问: ["#f8dce8", "#f2cddd"],
   销售部: ["#e4dff7", "#d8d1f2"],
+  财务部: ["#f3eedb", "#ebe4cb"],
+  会议室: ["#e9e4dc", "#dfd8cd"],
 };
 
 const TILE = 16;
@@ -470,7 +528,17 @@ function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y:
       ) : (
         <>
           <Plant x={x + 6} y={y + ROOM_H - 26} />
-          {room.name === "出镜顾问" ? <Camera x={x + ROOM_W - 52} y={y + ROOM_H - 30} /> : <Shelf x={x + ROOM_W - 34} y={y + ROOM_H - 28} />}
+          {room.name === "出镜顾问" ? (
+            <Camera x={x + ROOM_W - 52} y={y + ROOM_H - 30} />
+          ) : room.name === "销售部" ? (
+            <ChartBoard x={x + ROOM_W - 46} y={y + ROOM_H - 40} />
+          ) : room.name === "财务部" ? (
+            <Cabinet x={x + ROOM_W - 44} y={y + ROOM_H - 32} />
+          ) : room.name === "会议室" ? (
+            <MeetingTable x={x + 40} y={y + 62} />
+          ) : (
+            <Shelf x={x + ROOM_W - 34} y={y + ROOM_H - 28} />
+          )}
         </>
       )}
 
@@ -613,7 +681,9 @@ function Hall({ x, y, w }: { x: number; y: number; w: number }) {
   );
 }
 
-function Map({ rooms, cols, onHover, onLeave }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+function Map({ rooms: real, cols, onHover, onLeave }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+  // 最后一排没坐满就补一间会议室（agent 请求开会就是约在这里）
+  const rooms = real.length % cols ? [...real, { name: "会议室", people: [] }] : real;
   const rows = Math.ceil(rooms.length / cols);
   const W = cols * ROOM_W + (cols + 1) * 8;
   const H = rows * ROOM_H + (rows - 1) * HALL + 16;

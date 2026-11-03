@@ -66,7 +66,7 @@ export default function TaskBoard({ tasks, agents, fixedAgent }: { tasks: BoardT
                 <span className={"badge " + col.cls}>{col.label}</span>
                 <span className="text-xs text-stone-500 tabular-nums">{cards.length}</span>
               </header>
-              {col.key === "handoff" && <p className="px-1 pb-2 text-[11px] text-violet-700">→ 销售（招聘中）跟进</p>}
+              {col.key === "handoff" && <p className="px-1 pb-2 text-[11px] text-violet-700">→ 销售经理 Bob 跟进</p>}
               <div className="space-y-2">
                 {cards.map((t) => (
                   <article key={t.id} className="card p-2.5 text-sm">

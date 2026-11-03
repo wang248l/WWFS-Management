@@ -143,15 +143,15 @@ async function main() {
   const OFFICE: {
     key: string; name: string; department: string; title: string; avatar: string; tags?: string; skills?: string;
     workspaceUrl?: string; workspaceName?: string; duty?: string; host?: string; schedule?: string;
-    everyHours?: number; tokenMatch?: string; persona?: string; order?: number;
+    everyHours?: number; graceHours?: number; tokenMatch?: string; persona?: string; order?: number;
     tasks: { title: string; status: string; note?: string }[];
   }[] = [
     {
       key: "mark", name: "Mark", department: "社媒运营部", title: "社交媒体总运营", avatar: "🧭", order: 0,
       skills: "wwfs-agent-socialops,wwfs-ops-daily,wwfs-daily-editor,wwfs-scriptgen-ip,wwfs-scriptgen-marketing",
-      tags: "出稿,分配,数据分析",
+      tags: "策划,出稿,分配,数据分析",
       workspaceUrl: "https://marketing.wallacewang.ca", workspaceName: "Marketing 网站",
-      duty: "社交媒体总运营：出稿、分配给各 IP、看数据做分析；Marketing 网站值班，处理不了的报告老板；留资客户移交销售",
+      duty: "社交媒体总运营：策划、出稿、分配给各 IP、看数据做分析；Marketing 网站值班，处理不了的报告老板；留资客户移交销售",
       host: "Mac mini（与 Chase 共用）", schedule: "每天 07:35 / 12:35 / 17:35（温哥华）", everyHours: 8, tokenMatch: "mark",
       persona: "你是 Mark，WWFS 的社交媒体总运营，负责出稿、分配、数据分析，工作空间是 Marketing 网站（marketing.wallacewang.ca），跟负责剪辑发布的 Chase 共用一台 Mac mini。宣发全在线上，不做销售；有人留了联系方式就移交销售。",
       tasks: [
@@ -200,6 +200,28 @@ async function main() {
         { title: "每天 06:47 自动剪口播", status: "doing" },
         { title: "英文内容每小时自动发布（P1 手机）", status: "doing" },
       ],
+    },
+    {
+      // 2026-11-03 Wallace：「销售部加入销售经理 Bob」——数字员工 wwfs-agent-salesmgr
+      key: "bob", name: "Bob", department: "销售部", title: "销售经理", avatar: "📈", order: 5,
+      tags: "转化,跟进,复盘",
+      skills: "wwfs-agent-salesmgr,wwfs-salescoach",
+      workspaceUrl: "https://crm.wallacewang.ca", workspaceName: "CRM",
+      duty: "看全团队转化：CRM 漏斗各阶段、按顾问和来源对比、跟进有没有落下；接手宣发移交的留资客户",
+      host: "云端定时任务", schedule: "每周一 07:30", everyHours: 168, graceHours: 12,
+      persona: "你是 Bob，WWFS 的销售经理（数字员工）。你看 CRM 里全团队的转化和跟进，接手宣发移交过来的留资客户，安排顾问跟进。",
+      tasks: [{ title: "接手看板「移交销售」里的留资客户，分给顾问跟进", status: "todo" }],
+    },
+    {
+      // 2026-11-03 Wallace：「内容部改成会计 Tina」——数字员工 wwfs-agent-accountant
+      key: "tina", name: "Tina", department: "财务部", title: "会计", avatar: "🧮", order: 6,
+      tags: "记账,对账,佣金",
+      skills: "wwfs-agent-accountant,wwfs-commission-calc",
+      workspaceUrl: "https://accounting.wallacewang.ca", workspaceName: "记账系统",
+      duty: "WWFS 的账：每周记账，每月 11–20 号查对账单到没到，算佣金",
+      host: "云端定时任务", schedule: "每周一 09:30 · 每月 11–20 号 09:30", everyHours: 168, graceHours: 12,
+      persona: "你是 Tina，WWFS 的会计（数字员工）。你负责记账、每月对账、算佣金，工作空间是记账系统 accounting.wallacewang.ca。",
+      tasks: [{ title: "每月 11–20 号查 TD 对账单", status: "todo" }],
     },
     {
       key: "ryzen", name: "Ryzen", department: "内容部", title: "剪辑 & 发布（Windows）", avatar: "🖥️", order: 4,

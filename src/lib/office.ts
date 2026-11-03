@@ -7,11 +7,14 @@ import { hoursAgo, type AgentStatus } from "./team";
  * 打开他的工作空间、跟他说话、看他手上的任务。
  */
 
-export const DEPT_ORDER = ["社媒运营部", "运营部", "市场部", "增员部", "内容部", "出镜顾问", "销售部"];
-export const DEPT_ICON: Record<string, string> = { 社媒运营部: "📱", 运营部: "🧭", 市场部: "📣", 增员部: "🤝", 内容部: "🎬", 出镜顾问: "🎙️", 销售部: "💼" };
+// 办公室里现在开着的部门（2026-11-03 Wallace：「我们现在只有社媒运营……顾问两个人，市场部的 Leo，
+// 销售部加入销售经理 Bob，内容部改成会计 Tina」）。不在这里的部门（增员部、内容部）的人只在名单页和仪表盘里。
+export const OFFICE_DEPTS = ["社媒运营部", "出镜顾问", "市场部", "销售部", "财务部"];
+export const DEPT_ORDER = OFFICE_DEPTS;
+export const DEPT_ICON: Record<string, string> = { 社媒运营部: "📱", 运营部: "🧭", 市场部: "📣", 增员部: "🤝", 内容部: "🎬", 出镜顾问: "🎙️", 销售部: "💼", 财务部: "🧮" };
 
 // 还没人坐的位子（2026-11-03 Wallace：「销售我可能还会单独找一个人」）。看板「移交销售」的客户都归这里。
-export const OPEN_SEATS = [{ department: "销售部", title: "销售", note: "招聘中 · 接收宣发留资客户" }];
+export const OPEN_SEATS: { department: string; title: string; note: string }[] = []; // 销售位已由 Bob 接手
 
 export const PROMO_FIELDS = [
   { key: "posts", label: "发布" },
@@ -74,7 +77,7 @@ export async function loadOffice() {
     ...staff.map((s) => s.department || "未分部门"),
     ...OPEN_SEATS.map((s) => s.department),
   ]);
-  const ordered = [...depts].sort((x, y) => {
+  const ordered = [...depts].filter((d) => OFFICE_DEPTS.includes(d)).sort((x, y) => {
     const ix = DEPT_ORDER.indexOf(x), iy = DEPT_ORDER.indexOf(y);
     return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy);
   });

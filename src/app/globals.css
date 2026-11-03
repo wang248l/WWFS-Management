@@ -117,3 +117,4 @@
 .px-chick-walk { animation: px-chick 7s steps(28) infinite; }
 .px-chick-flip { transform-origin: center; animation: px-flip 7s steps(1) infinite; }
 @keyframes px-chick { 0%,10% { transform: translateX(0) } 50%,60% { transform: translateX(var(--run, 30px)) } 100% { transform: translateX(0) } }
+.px-blinkon-slow { animation: px-blinkon 2s steps(2) infinite; }

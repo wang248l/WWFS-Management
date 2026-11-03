@@ -19,12 +19,13 @@ const PROMO_COLOR: Record<string, string> = { posts: "#3b82f6", impressions: "#6
 
 
 export default async function Lobby() {
-  const [{ agents, departments, handoffCount, needs }, promo] = await Promise.all([loadOffice(), loadPromo()]);
-  const active = agents.filter((a) => a.active);
+  const [{ departments, handoffCount, needs }, promo] = await Promise.all([loadOffice(), loadPromo()]);
+  const officeAgents = departments.flatMap((d) => d.agents);
+  const active = officeAgents.filter((a) => a.active);
   const onDuty = active.filter((a) => a.status === "ok").length;
-  const doing = agents.reduce((n, a) => n + a.tasks.filter((t) => t.status === "doing").length, 0);
-  const blocked = agents.reduce((n, a) => n + a.tasks.filter((t) => t.status === "blocked").length, 0);
-  const unread = agents.reduce((n, a) => n + a.unread, 0);
+  const doing = officeAgents.reduce((n, a) => n + a.tasks.filter((t) => t.status === "doing").length, 0);
+  const blocked = officeAgents.reduce((n, a) => n + a.tasks.filter((t) => t.status === "blocked").length, 0);
+  const unread = officeAgents.reduce((n, a) => n + a.unread, 0);
 
   // 宣发合计（Mark + Leo），每天一根柱子
   const promoKeys = Object.keys(promo);
