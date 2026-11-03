@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "WWFS 管理驾驶舱",
-    short_name: "WWFS 管理",
-    description: "Wallace Wang Financial Services 各部门经营数据总览",
+    name: "WWFS办公室",
+    short_name: "WWFS办公室",
+    description: "WWFS 虚拟办公室",
     start_url: "/",
     display: "standalone",
     background_color: "#1e40af",

@@ -21,3 +21,57 @@
   .delta-bad { @apply text-red-700 bg-red-50; }
   .delta-flat { @apply text-stone-500 bg-stone-100; }
 }
+
+/* ---- WWFS办公室 动效（2026-11-03 Wallace：「放上卡通动画，放上好看的动效果」「要直观」）---- */
+@layer components {
+  .avatar { position: relative; flex-shrink: 0; }
+  .avatar svg { overflow: visible; }
+  .av-body { transform-origin: 40px 70px; }
+  .avatar-work .av-body { animation: av-bob 2.4s ease-in-out infinite; }
+  .avatar-work .av-hand-l { animation: av-type .32s ease-in-out infinite alternate; }
+  .avatar-work .av-hand-r { animation: av-type .32s ease-in-out .16s infinite alternate; }
+  .avatar-work .av-light, .avatar-happy .av-light { animation: av-breathe 2s ease-in-out infinite; }
+  .av-eyes { transform-origin: 40px 31px; animation: av-blink 4.5s infinite; }
+  .avatar-sleep .av-body { animation: av-bob 4s ease-in-out infinite; }
+  .avatar-sleep .av-zzz text { animation: av-zzz 2.6s ease-in infinite; }
+  .avatar-sleep .av-zzz text:nth-child(2) { animation-delay: 1.3s; }
+  .avatar-alert .av-body { animation: av-shake .5s ease-in-out infinite; }
+  .avatar-alert .av-light { animation: av-flash .5s steps(2) infinite; }
+  .avatar-alert .av-sweat { animation: av-sweat 1.4s ease-in infinite; }
+  .avatar-happy .av-body { animation: av-jump 1.6s cubic-bezier(.3,1.6,.5,1) infinite; }
+  .avatar-happy .av-stars path { transform-box: fill-box; transform-origin: center; animation: av-twinkle 1.2s ease-in-out infinite; }
+  .avatar-happy .av-stars path:nth-child(2) { animation-delay: .6s; }
+
+  /* 桌上笔记本：在岗时屏幕在闪 */
+  .screen-on { animation: screen 1.8s ease-in-out infinite; }
+
+  .rise { animation: rise .55s cubic-bezier(.2,.8,.2,1) both; }
+  .desk-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; }
+  .desk-card:hover { transform: translateY(-4px) scale(1.015); box-shadow: 0 14px 30px -12px rgba(0,0,0,.25); }
+  .desk-card:hover .av-body { animation-duration: .9s; }
+  .room-floor {
+    background-color: #fafaf9;
+    background-image: linear-gradient(45deg, rgba(0,0,0,.025) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.025) 75%),
+      linear-gradient(45deg, rgba(0,0,0,.025) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.025) 75%);
+    background-size: 28px 28px; background-position: 0 0, 14px 14px;
+  }
+  .pulse-dot { animation: pulse-dot 1.8s ease-out infinite; }
+  .page-enter { animation: page-enter .45s cubic-bezier(.2,.8,.2,1) both; }
+  .bar-grow { transform-origin: bottom; animation: bar-grow .8s cubic-bezier(.2,.8,.2,1) both; }
+}
+@keyframes av-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
+@keyframes av-type { from { transform: translateY(0) } to { transform: translateY(-3px) } }
+@keyframes av-breathe { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+@keyframes av-flash { 0% { opacity: 1 } 100% { opacity: .2 } }
+@keyframes av-blink { 0%,92%,100% { transform: scaleY(1) } 95% { transform: scaleY(.1) } }
+@keyframes av-zzz { 0% { opacity: 0; transform: translate(0,4px) } 30% { opacity: 1 } 100% { opacity: 0; transform: translate(6px,-10px) } }
+@keyframes av-shake { 0%,100% { transform: rotate(0) } 25% { transform: rotate(-4deg) } 75% { transform: rotate(4deg) } }
+@keyframes av-sweat { 0% { opacity: 0; transform: translateY(-2px) } 30% { opacity: 1 } 100% { opacity: 0; transform: translateY(8px) } }
+@keyframes av-jump { 0%,60%,100% { transform: translateY(0) } 30% { transform: translateY(-8px) } }
+@keyframes av-twinkle { 0%,100% { transform: scale(.6); opacity: .4 } 50% { transform: scale(1.2); opacity: 1 } }
+@keyframes screen { 0%,100% { opacity: .9 } 50% { opacity: .55 } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+@keyframes page-enter { from { opacity: 0; transform: translateY(10px) scale(.99) } to { opacity: 1; transform: none } }
+@keyframes pulse-dot { 0% { box-shadow: 0 0 0 0 currentColor } 100% { box-shadow: 0 0 0 7px transparent } }
+@keyframes bar-grow { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

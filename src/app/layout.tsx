@@ -5,17 +5,19 @@ import { getCurrentUser, canAccess } from "@/lib/auth";
 import MobileNav from "./_components/MobileNav";
 
 export const metadata: Metadata = {
-  title: "WWFS 管理驾驶舱",
-  description: "Wallace Wang Financial Services 各部门经营数据总览",
+  title: "WWFS办公室",
+  description: "WWFS 虚拟办公室：各部门同事的工位、对话和看板",
   manifest: "/manifest.webmanifest",
-  applicationName: "WWFS 管理驾驶舱",
-  appleWebApp: { capable: true, title: "WWFS 管理", statusBarStyle: "default" },
+  applicationName: "WWFS办公室",
+  appleWebApp: { capable: true, title: "WWFS办公室", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = { themeColor: "#1d4ed8" };
 
 const NAV = [
-  { href: "/", label: "每日仪表盘" },
+  { href: "/", label: "办公室" },
+  { href: "/board", label: "Agent 看板" },
+  { href: "/dashboard", label: "每日仪表盘" },
   { href: "/kpi", label: "月度经营总览" },
   { href: "/data", label: "数据录入" },
   { href: "/team", label: "人员与 Agent 名单" },
@@ -34,10 +36,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {/* 桌面端侧栏；手机上隐藏，用上面的 MobileNav 抽屉 */}
             <aside className="hidden md:flex w-56 shrink-0 bg-stone-900 text-stone-100 flex-col">
               <div className="px-6 py-5 border-b border-stone-800 flex items-center gap-3">
-                <img src="/icon.svg" alt="WWFS 管理" className="w-9 h-9 rounded-xl shadow-md shrink-0" />
+                <img src="/icon.svg" alt="WWFS办公室" className="w-9 h-9 rounded-xl shadow-md shrink-0" />
                 <div>
-                  <div className="text-base font-semibold">管理驾驶舱</div>
-                  <div className="text-xs text-stone-400 mt-0.5">各部门经营数据</div>
+                  <div className="text-base font-semibold">WWFS办公室</div>
+                  <div className="text-xs text-stone-400 mt-0.5">虚拟办公室</div>
                 </div>
               </div>
               <nav className="flex-1 px-3 py-4 space-y-1">

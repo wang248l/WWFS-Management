@@ -27,7 +27,7 @@ export default function MobileNav({ nav, userName }: { nav: { href: string; labe
           </svg>
         </button>
         <img src="/icon.svg" alt="" className="w-6 h-6 rounded-md" />
-        <span className="text-sm font-semibold">{nav.find((n) => n.href === pathname)?.label || "管理驾驶舱"}</span>
+        <span className="text-sm font-semibold">{nav.find((n) => n.href === pathname)?.label || "WWFS办公室"}</span>
       </header>
 
       <div
@@ -42,7 +42,7 @@ export default function MobileNav({ nav, userName }: { nav: { href: string; labe
       >
         <div className="px-5 py-4 border-b border-stone-800 flex items-center gap-3">
           <img src="/icon.svg" alt="" className="w-8 h-8 rounded-xl" />
-          <div className="flex-1 text-base font-semibold">管理驾驶舱</div>
+          <div className="flex-1 text-base font-semibold">WWFS办公室</div>
           <button type="button" aria-label="关闭菜单" onClick={() => setOpen(false)} className="text-stone-400 text-2xl leading-none px-1">
             ×
           </button>

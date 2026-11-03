@@ -20,8 +20,8 @@ export default async function LoginPage({ searchParams }: { searchParams: { next
     <div className="min-h-screen flex items-center justify-center bg-stone-50 px-4">
       <div className="card p-8 max-w-md w-full text-center space-y-5">
         <div className="flex flex-col items-center">
-          <img src="/icon.svg" alt="WWFS 管理驾驶舱" className="w-16 h-16 rounded-2xl shadow-md mb-3" />
-          <h1 className="text-2xl font-semibold text-stone-900">WWFS 管理驾驶舱</h1>
+          <img src="/icon.svg" alt="WWFS办公室" className="w-16 h-16 rounded-2xl shadow-md mb-3" />
+          <h1 className="text-2xl font-semibold text-stone-900">WWFS办公室</h1>
           <p className="text-sm text-stone-500 mt-1">各部门经营数据总览</p>
         </div>
         <div className="text-sm text-stone-700 space-y-2">
