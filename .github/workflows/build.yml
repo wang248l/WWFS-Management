@@ -1,0 +1,39 @@
+# 每次 push 先在 CI 里类型检查 + build，挡住坏代码。
+# 真正部署由 WWFS-Marketing 的「部署 Management」工作流来跑（它已经有登 droplet 的钥匙，这个仓库没有）：
+# 它拉这个仓库的 main，build 一遍，再跑 scripts/deploy-clean.sh。合并后由 Claude 触发它，每天也会自己核对一次。
+# 2026-11-03 Wallace：「都要自动部署」「marketing 仓库部署的钥匙我不太知道」。
+
+name: 构建检查
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-management
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: file:./ci.db
+      - name: 类型检查
+        run: npx tsc --noEmit
+      - name: 构建
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          DATABASE_URL: file:./ci.db
+          AUTH_SECRET: ci
