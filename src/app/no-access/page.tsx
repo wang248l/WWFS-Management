@@ -18,7 +18,7 @@ export default async function NoAccessPage() {
         {user ? (
           <p className="text-sm text-stone-600">
             你已登录为 <span className="font-medium">{user.displayName || user.username}</span>
-            (角色 <code className="font-mono">{user.role}</code>),但管理驾驶舱目前仅对{" "}
+            (角色 <code className="font-mono">{user.role}</code>),但 WWFS办公室目前仅对{" "}
             <code className="font-mono">{allowedRoles().join(" / ")}</code> 开放。
           </p>
         ) : (

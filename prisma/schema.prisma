@@ -89,6 +89,9 @@ model Staff {
   role              String? // 出镜顾问 / 运营 ...
   // 每周拍摄分钟目标（提词器录制时长），0 = 不考核拍摄
   weeklyFilmMinutes Int      @default(0)
+  // WWFS办公室：所在部门 + 自己的工作空间（点进去打开的系统）
+  department        String?
+  workspaceUrl      String?
   active            Boolean  @default(true)
   order             Int      @default(0)
   createdAt         DateTime @default(now())
@@ -110,11 +113,62 @@ model Agent {
   // Marketing 里这台机器用的 API 钥匙名（AgentToken.label，子串匹配）——
   // 钥匙最后使用时间也算一次「活着」的信号，agent 不用改代码就能被看到
   tokenMatch String?
+  // WWFS办公室（2026-11-03 Wallace：「每个人负责一个单独的工作空间」「Mark 的工作空间就是 marketing 网站」）
+  department   String? // 运营部 / 市场部 / 增员部 ...
+  title        String? // 工牌上的头衔：社交媒体总运营
+  tags         String? // 职责标签，逗号分隔：出稿,分配,数据分析（工位上名字旁边显示）
+  avatar       String? // emoji
+  workspaceUrl String? // 他自己的工作空间
+  workspaceName String?
+  persona      String? // 在线对话时的人设与边界（给 Claude 的 system prompt）
+  // 培训（2026-11-03 Wallace：「培训的过程就是用 Claude 去改这些 agent 的 skill，我会给每一个员工建立一个 project」）
+  skills       String? // wang248l/agent-skills 里的文件夹，逗号分隔：wwfs-edit-koubo,wwfs-publish-shortvideo
+  projectUrl   String? // 这个员工的培训 project 链接；空 = 待建
   active     Boolean    @default(true)
   order      Int        @default(0)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   runs       AgentRun[]
+  tasks      AgentTask[]
+  messages   AgentMessage[]
+}
+
+// 看板上的一张卡：谁在做什么。agent 自己也能用 POST /api/agents/task 改。
+model AgentTask {
+  id        String   @id @default(cuid())
+  agentId   String
+  title     String
+  status    String   @default("todo") // todo | doing | blocked | handoff（留资客户移交销售）| done
+  note      String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([status, updatedAt])
+}
+
+// 老板在办公室里跟某个 agent 说的话、agent 的回答。
+// agent 值班时用 GET /api/agents/inbox 取未读，POST /api/agents/reply 回复。
+model AgentMessage {
+  id        String    @id @default(cuid())
+  agentId   String
+  fromRole  String // owner | agent
+  // 2026-11-03 Wallace：「告诉 Chase 改一下剪辑方法……完成不了就报错，第二天请求跟我开会，或者随时找我」
+  // owner: chat 聊天 | instruction 交给他做（Mac 上的 runner 会执行）
+  // agent: chat | progress 进度/完成 | blocker 卡住了 | meeting 请求开会
+  kind      String    @default("chat")
+  urgent    Boolean   @default(false) // blocker/meeting：true = 随时找老板，false = 第二天开会
+  taskId    String? // 对应看板上的卡
+  text      String
+  readAt    DateTime? // owner 消息：agent 取走的时间
+  resolvedAt DateTime? // blocker/meeting：老板点了「已处理」
+  createdAt DateTime  @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, createdAt])
 }
 
 // agent 每跑完一次打一次卡：POST /api/agents/run
@@ -132,4 +186,21 @@ model AgentRun {
   agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@index([agentId, createdAt])
+}
+
+// 线上宣发每日数字（2026-11-03 Wallace：「宣发的工作都是线上的，完全不涉及销售」）。
+// Mark / Leo 每天报一次：POST /api/agents/metrics，同一天重报覆盖。
+model PromoDaily {
+  id          String   @id @default(cuid())
+  agentKey    String // mark | leo
+  date        String // "YYYY-MM-DD"
+  posts       Int?   // 当天发了几条
+  impressions Int?   // 曝光
+  followers   Int?   // 新增粉丝
+  dms         Int?   // 私信
+  leads       Int?   // 留了联系方式（→ 看板「移交销售」）
+  signups     Int?   // 网课报名
+  updatedAt   DateTime @updatedAt
+
+  @@unique([agentKey, date])
 }

@@ -137,6 +137,130 @@ async function main() {
     await prisma.agent.upsert({ where: { key: a.key }, update: {}, create: a });
   }
 
+  // 1c) WWFS办公室（2026-11-03 Wallace：「每个部门做一套管理系统」「每个人负责一个单独的工作空间」
+  //     「Mark 的工作空间就是我们的 marketing 网站」）。新 agent 直接建；已有的只补空字段，名单页改过的不覆盖。
+  //     看板上的起始任务只在这个 agent 一张卡都没有时放进去。
+  const OFFICE: {
+    key: string; name: string; department: string; title: string; avatar: string; tags?: string; skills?: string;
+    workspaceUrl?: string; workspaceName?: string; duty?: string; host?: string; schedule?: string;
+    everyHours?: number; graceHours?: number; tokenMatch?: string; persona?: string; order?: number;
+    tasks: { title: string; status: string; note?: string }[];
+  }[] = [
+    {
+      key: "mark", name: "Mark", department: "社媒运营部", title: "社交媒体总运营", avatar: "🧭", order: 0,
+      skills: "wwfs-agent-socialops,wwfs-ops-daily,wwfs-daily-editor,wwfs-scriptgen-ip,wwfs-scriptgen-marketing",
+      tags: "策划,出稿,分配,数据分析",
+      workspaceUrl: "https://marketing.wallacewang.ca", workspaceName: "Marketing 网站",
+      duty: "社交媒体总运营：策划、出稿、分配给各 IP、看数据做分析；Marketing 网站值班，处理不了的报告老板；留资客户移交销售",
+      host: "Mac mini（与 Chase 共用）", schedule: "每天 07:35 / 12:35 / 17:35（温哥华）", everyHours: 8, tokenMatch: "mark",
+      persona: "你是 Mark，WWFS 的社交媒体总运营，负责出稿、分配、数据分析，工作空间是 Marketing 网站（marketing.wallacewang.ca），跟负责剪辑发布的 Chase 共用一台 Mac mini。宣发全在线上，不做销售；有人留了联系方式就移交销售。",
+      tasks: [
+        { title: "每天三次值班：巡检 Marketing 网站任务和异常", status: "doing" },
+        { title: "Marketing 日报（daily / daily-noon）迁到 Mac 跑", status: "todo" },
+        { title: "每天报宣发数字：发布 / 曝光 / 新粉 / 私信 / 留资", status: "todo" },
+      ],
+    },
+    {
+      key: "leo", name: "Leo", department: "市场部", title: "产品推广 & 网课", avatar: "🎓", order: 1,
+      skills: "wwfs-agent-pr,wwfs-scriptgen-longvideo",
+      tags: "产品推广,网课",
+      duty: "线上产品推广和网课：选题、大纲、推广素材、上线节奏；只做线上宣发，留资客户移交销售",
+      host: "待定", schedule: "待定", everyHours: 24,
+      persona: "你是 Leo，WWFS 的产品推广和网课负责人。你负责网课选题、大纲、推广素材和上线节奏。你的工作空间还在搭建中。宣发全在线上，不做销售；有人留了联系方式就移交销售。",
+      tasks: [
+        { title: "定第一门网课的主题和大纲", status: "todo" },
+        { title: "列产品推广素材清单（短视频 / 海报 / 文案）", status: "todo" },
+        { title: "搭 Leo 的工作空间（网课后台）", status: "todo" },
+        { title: "每天报宣发数字：发布 / 曝光 / 新粉 / 私信 / 留资 / 网课报名", status: "todo" },
+      ],
+    },
+    {
+      key: "recruit", name: "增员员", department: "增员部", title: "增员专员 · LinkedIn", avatar: "🤝", order: 2,
+      skills: "wwfs-agent-recruiter",
+      tags: "找人,预热,约见",
+      workspaceUrl: "https://www.linkedin.com/mynetwork/", workspaceName: "LinkedIn",
+      duty: "在 LinkedIn 找持牌 / 快持牌的华人顾问和 CFP（先 AB），预热、约见；只讲职业平台，不讲副业收入",
+      host: "Mac mini · Chrome Profile 5", schedule: "每天 06:10（批准后）", everyHours: 24,
+      persona: "你是增员员，WWFS 的 LinkedIn 增员专员。你在 LinkedIn 上找加拿大持牌或快持牌的华人顾问和 CFP，先做阿尔伯塔，只讲职业平台，从不讲副业或收入承诺。每天最多 10 条消息、每周 60 个邀请。",
+      tasks: [
+        { title: "卡尔加里候选人入库（9 位，只读搜索）", status: "done" },
+        { title: "每天自动发消息和邀请", status: "blocked", note: "等老板说「可以」才开始自动发送" },
+      ],
+    },
+    {
+      // 打卡 key 仍是 mac（Mac 上的脚本都用这个），名字 2026-11-03 起叫 Chase
+      key: "mac", name: "Chase", department: "社媒运营部", title: "剪辑 & 发布", avatar: "🎬", order: 1,
+      skills: "wwfs-edit-koubo,wwfs-publish-shortvideo,wwfs-covergen-finance,wwfs-covergen-lifestyle",
+      tags: "剪辑,发布",
+      workspaceUrl: "https://claude.ai/artifact/WydxxqTJb67qRmB3dLj2mn", workspaceName: "视频进度看板",
+      duty: "口播剪辑（1080p60、封面、字幕）和各平台发布（手机 + 网页）",
+      host: "Mac mini（与 Mark 共用）", schedule: "每天 06:47 剪辑 · 每小时发布",
+      persona: "你是 Chase，WWFS 的剪辑和发布，跟 Mark 共用一台 Mac mini：每天自动剪口播、出 1080p60 成片、按排程发到各平台。Mark 出稿和分配，你负责剪和发。",
+      tasks: [
+        { title: "每天 06:47 自动剪口播", status: "doing" },
+        { title: "英文内容每小时自动发布（P1 手机）", status: "doing" },
+      ],
+    },
+    {
+      // 2026-11-03 Wallace：「销售部加入销售经理 Bob」——数字员工 wwfs-agent-salesmgr
+      key: "bob", name: "Bob", department: "销售部", title: "销售经理", avatar: "📈", order: 5,
+      tags: "转化,跟进,复盘",
+      skills: "wwfs-agent-salesmgr,wwfs-salescoach",
+      workspaceUrl: "https://crm.wallacewang.ca", workspaceName: "CRM",
+      duty: "看全团队转化：CRM 漏斗各阶段、按顾问和来源对比、跟进有没有落下；接手宣发移交的留资客户",
+      host: "云端定时任务", schedule: "每周一 07:30", everyHours: 168, graceHours: 12,
+      persona: "你是 Bob，WWFS 的销售经理（数字员工）。你看 CRM 里全团队的转化和跟进，接手宣发移交过来的留资客户，安排顾问跟进。",
+      tasks: [{ title: "接手看板「移交销售」里的留资客户，分给顾问跟进", status: "todo" }],
+    },
+    {
+      // 2026-11-03 Wallace：「内容部改成会计 Tina」——数字员工 wwfs-agent-accountant
+      key: "tina", name: "Tina", department: "财务部", title: "会计", avatar: "🧮", order: 6,
+      tags: "记账,对账,佣金",
+      skills: "wwfs-agent-accountant,wwfs-commission-calc",
+      workspaceUrl: "https://accounting.wallacewang.ca", workspaceName: "记账系统",
+      duty: "WWFS 的账：每周记账，每月 11–20 号查对账单到没到，算佣金",
+      host: "云端定时任务", schedule: "每周一 09:30 · 每月 11–20 号 09:30", everyHours: 168, graceHours: 12,
+      persona: "你是 Tina，WWFS 的会计（数字员工）。你负责记账、每月对账、算佣金，工作空间是记账系统 accounting.wallacewang.ca。",
+      tasks: [{ title: "每月 11–20 号查 TD 对账单", status: "todo" }],
+    },
+    {
+      key: "ryzen", name: "Ryzen", department: "内容部", title: "剪辑 & 发布（Windows）", avatar: "🖥️", order: 4,
+      tasks: [],
+    },
+  ];
+  // 2026-11-03 Wallace：「社交媒体总运营是 Mark……剪辑和发布叫 Chase，Chase 和 Mark 共用一台 Mac」。
+  // 还是种子默认值的老行直接换成新资料（名单页改过的不动）。
+  const RENAMED: Record<string, Record<string, string>> = { mac: { name: "MAC" }, mark: { title: "运营经理" } };
+  for (const o of OFFICE) {
+    const { tasks, ...fields } = o;
+    let agent = await prisma.agent.findUnique({ where: { key: o.key } });
+    const was = RENAMED[o.key];
+    if (agent && was && Object.entries(was).every(([k, v]) => (agent as any)[k] === v)) {
+      agent = await prisma.agent.update({
+        where: { id: agent.id },
+        data: { name: o.name, title: o.title, duty: o.duty, host: o.host, schedule: o.schedule, department: o.department, tags: o.tags, persona: o.persona },
+      });
+    }
+    if (!agent) {
+      agent = await prisma.agent.create({ data: { ...fields, everyHours: o.everyHours ?? 24 } });
+    } else {
+      const fill: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(fields)) {
+        if (v !== undefined && (agent as any)[k] == null) fill[k] = v;
+      }
+      if (Object.keys(fill).length) agent = await prisma.agent.update({ where: { id: agent.id }, data: fill });
+    }
+    if (tasks.length && (await prisma.agentTask.count({ where: { agentId: agent.id } })) === 0) {
+      await prisma.agentTask.createMany({ data: tasks.map((t, i) => ({ ...t, agentId: agent!.id, order: i })) });
+    }
+  }
+  for (const n of ["Amelia", "Ishan"]) {
+    await prisma.staff.updateMany({
+      where: { name: n, department: null },
+      data: { department: "出镜顾问", workspaceUrl: "https://crm.wallacewang.ca" },
+    });
+  }
+
   // 2) Local admin — only when SSO is NOT active. With COOKIE_DOMAIN set, CRM is
   //    the sole identity provider and a local admin would just be an orphan row.
   if (process.env.COOKIE_DOMAIN) {

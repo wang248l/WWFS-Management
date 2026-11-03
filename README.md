@@ -1,4 +1,15 @@
-# WWFS 管理驾驶舱 (WWFS-Management)
+# WWFS办公室 (WWFS-Management)
+
+> 2026-11-03 起首页是 **WWFS办公室**：办公室平面图，每个部门一间房、每人一个工位（卡通小人的动作就是状态）。
+> 点工位进去：打开他的工作空间（Mark → Marketing 网站）、跟他说话、看他的看板。`/board` 是全员看板
+> （待办 / 进行中 / 卡住 / 移交销售 / 完成）。原来的每日仪表盘在 `/dashboard`。
+>
+> Agent 接口（都用 `Bearer INGEST_TOKEN`）：
+> - `GET /api/agents/inbox?agent=mark` 取老板留言；`POST /api/agents/reply {"agent","text","ack":"all"}` 回复并标已读
+> - `POST /api/agents/task {"agent","title","status","note"}` 挪卡 / 加卡（留资客户 status=handoff）
+> - `POST /api/agents/metrics {"agent","date","posts","impressions","followers","dms","leads","signups"}` 报宣发数字
+
+## 原 README：管理驾驶舱
 
 Wallace Wang Financial Services 的**管理层经营数据驾驶舱**。把销售、市场、运营各部门的关键指标
 (销售转化率、流量、私信数量、开口成本……)汇总到一个页面,按月对比环比变化,辅助管理决策
