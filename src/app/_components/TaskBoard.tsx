@@ -11,7 +11,7 @@ export type BoardAgent = { key: string; name: string; avatar: string | null };
  * Agent 看板：待办 / 进行中 / 卡住 / 移交销售 / 完成。
  * 卡片底下的下拉直接换列；工位页传 fixedAgent 只看这一个人的卡。
  */
-export default function TaskBoard({ tasks, agents, fixedAgent }: { tasks: BoardTask[]; agents: BoardAgent[]; fixedAgent?: string }) {
+export default function TaskBoard({ tasks, agents, fixedAgent, readOnly = false }: { tasks: BoardTask[]; agents: BoardAgent[]; fixedAgent?: string; readOnly?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState("");
@@ -27,7 +27,7 @@ export default function TaskBoard({ tasks, agents, fixedAgent }: { tasks: BoardT
 
   return (
     <div className="space-y-3">
-      <form
+      {!readOnly && <form
         className="flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault();
@@ -55,7 +55,7 @@ export default function TaskBoard({ tasks, agents, fixedAgent }: { tasks: BoardT
         <button className="btn-primary" disabled={busy}>
           添加
         </button>
-      </form>
+      </form>}
 
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
         {TASK_COLUMNS.map((col) => {
@@ -77,6 +77,9 @@ export default function TaskBoard({ tasks, agents, fixedAgent }: { tasks: BoardT
                     )}
                     <div className="font-medium leading-snug">{t.title}</div>
                     {t.note && <div className="text-xs text-stone-500 mt-1">{t.note}</div>}
+                    {readOnly ? (
+                      <div className="text-[11px] text-stone-400 mt-1.5">更新于 {new Date(t.updatedAt).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}</div>
+                    ) : (
                     <div className="mt-2 flex items-center gap-2">
                       <select
                         className="text-xs rounded border border-stone-300 bg-white px-1.5 py-1"
@@ -100,6 +103,7 @@ export default function TaskBoard({ tasks, agents, fixedAgent }: { tasks: BoardT
                         删除
                       </button>
                     </div>
+                    )}
                   </article>
                 ))}
                 {!cards.length && <div className="text-xs text-stone-400 px-1">—</div>}

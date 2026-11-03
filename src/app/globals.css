@@ -118,3 +118,21 @@
 .px-chick-flip { transform-origin: center; animation: px-flip 7s steps(1) infinite; }
 @keyframes px-chick { 0%,10% { transform: translateX(0) } 50%,60% { transform: translateX(var(--run, 30px)) } 100% { transform: translateX(0) } }
 .px-blinkon-slow { animation: px-blinkon 2s steps(2) infinite; }
+/* Claude 巡视：走一段、停下看一眼（冒 ✓）、再走，走到头掉头回来 */
+.px-claude-walk { animation: px-claude-walk 24s linear infinite; }
+.px-claude-flip { transform-origin: center; animation: px-claude-flip 24s steps(1) infinite; }
+@keyframes px-claude-flip { 0% { transform: scaleX(1) } 50% { transform: scaleX(-1) } 92% { transform: scaleX(1) } }
+.px-claude-check { opacity: 0; animation: px-claude-check 24s steps(1) infinite; }
+@keyframes px-claude-walk {
+  0% { transform: translateX(0) }
+  10%, 16% { transform: translateX(calc(var(--hall) * .17)) }
+  26%, 32% { transform: translateX(calc(var(--hall) * .5)) }
+  42%, 50% { transform: translateX(calc(var(--hall) * .83)) }
+  60%, 66% { transform: translateX(calc(var(--hall) * .5)) }
+  76%, 82% { transform: translateX(calc(var(--hall) * .17)) }
+  92%, 100% { transform: translateX(0) }
+}
+@keyframes px-claude-check {
+  0%, 10% { opacity: 0 } 11%, 16% { opacity: 1 } 17%, 26% { opacity: 0 } 27%, 32% { opacity: 1 } 33%, 42% { opacity: 0 }
+  43%, 50% { opacity: 1 } 51%, 60% { opacity: 0 } 61%, 66% { opacity: 1 } 67%, 76% { opacity: 0 } 77%, 82% { opacity: 1 } 83%, 100% { opacity: 0 }
+}

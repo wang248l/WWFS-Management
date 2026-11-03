@@ -31,8 +31,6 @@ services:
       MARKETING_API_BASE: "${MARKETING_API_BASE:-https://marketing.wallacewang.ca}"
       MARKETING_API_KEY: "${MARKETING_API_KEY:-}"
       GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
-      # WWFS办公室：工位对话当场回复（空 = 只留言，agent 值班时回）
-      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       WATCH_REPOS: "${WATCH_REPOS:-wang248l/WWFS-CRM:CRM,wang248l/WWFS-Marketing:Marketing}"
     # Cap RAM so it can't starve CRM on the 4GB droplet
     deploy:

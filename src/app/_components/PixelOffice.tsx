@@ -25,6 +25,11 @@ export type PixelPerson = {
   task: string | null;
   unread: number;
   shared?: boolean; // 共用一张桌一台电脑
+  schedule?: string | null; // 定时任务：每天 07:35 / 12:35 / 17:35
+  every?: string | null; // 周期：每 8 小时一次
+  lastRun?: string | null; // 上次跑：3 小时前（打卡内容）
+  host?: string | null;
+  stuck?: string | null; // 头上「!」的原因
   seat?: boolean; // 空位（招聘中）
 };
 export type PixelRoom = { name: string; people: PixelPerson[] };
@@ -681,7 +686,51 @@ function Hall({ x, y, w }: { x: number; y: number; w: number }) {
   );
 }
 
-function Map({ rooms: real, cols, onHover, onLeave }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+
+// ---- Claude 巡视员（2026-11-03 Wallace：「把 Claude 的小人也加进去，到处走然后做一个巡视的动作，
+// 鼠标点小人就显示，需要发布指令就到 Claude」）。原创造型：陶土色兜帽 + 记录板，不用任何官方标志。----
+const CLAUDE_SPRITE = [
+  "..OOOOOOOO..",
+  ".OKKKKKKKKO.",
+  "OKKKKKKKKKKO",
+  "OKKSSSSSSKKO",
+  "OKSSSSSSSSKO",
+  "OSSESSSSESSO",
+  "OSSESSSSESSO",
+  "OSBSSSSSSBSO",
+  ".OSSSMMSSSO.",
+  "..OOSSSSOO..",
+  ".OKKKKKKKKO.",
+  "OKKKKKWWWWKO",
+  "OKKKKKWLLWKO",
+  "OSKKKKWWWWSO",
+];
+const CLAUDE_PAL = { O: "#2a1e1a", K: "#d4704f", S: "#fbe3cf", E: "#1a1420", B: "#f2a08a", M: "#a8483a", W: "#fffdf4", L: "#8a8a99" };
+
+function ClaudePatrol({ x, y, w, onClick }: { x: number; y: number; w: number; onClick: () => void }) {
+  return (
+    <g className="px-claude-walk cursor-pointer" style={{ ["--hall" as any]: `${w - 40}px` }} onClick={onClick}>
+      <rect x={x} y={y - 14} width={30} height={50} fill="transparent" />
+      <g className="px-claude-flip">
+        <g className="px-bob">
+          <Pixels rows={CLAUDE_SPRITE} pal={CLAUDE_PAL} x={x + 4} y={y - 12} />
+          <rect x={x + 7} y={y + 16} width={4} height={4} fill="#2a1e1a" className="px-frame-a" />
+          <rect x={x + 17} y={y + 16} width={4} height={4} fill="#2a1e1a" className="px-frame-b" />
+          <rect x={x + 7} y={y + 16} width={4} height={2} fill="#2a1e1a" className="px-frame-b" />
+          <rect x={x + 17} y={y + 16} width={4} height={2} fill="#2a1e1a" className="px-frame-a" />
+        </g>
+      </g>
+      {/* 巡视：停下来的时候头上冒「✓」 */}
+      <g className="px-claude-check">
+        <rect x={x + 18} y={y - 30} width={14} height={13} fill="#fff" stroke="#2a1e1a" strokeWidth={1.5} />
+        <path d={`M${x + 21} ${y - 24}l3 3l5 -6`} stroke="#2f9e57" strokeWidth={2} fill="none" />
+      </g>
+      <PixelLabel x={x + 16} y={y + 30} text="Claude" />
+    </g>
+  );
+}
+
+function Map({ rooms: real, cols, onHover, onLeave, onClaude }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void; onClaude: () => void }) {
   // 最后一排没坐满就补一间会议室（agent 请求开会就是约在这里）
   const rooms = real.length % cols ? [...real, { name: "会议室", people: [] }] : real;
   const rows = Math.ceil(rooms.length / cols);
@@ -698,20 +747,30 @@ function Map({ rooms: real, cols, onHover, onLeave }: { rooms: PixelRoom[]; cols
         const r = Math.floor(i / cols);
         return <Room key={room.name} room={room} x={8 + c * (ROOM_W + 8)} y={8 + r * (ROOM_H + HALL)} onHover={onHover} onLeave={onLeave} />;
       })}
+      {rows > 1 && <ClaudePatrol x={14} y={8 + ROOM_H + 6} w={W - 28} onClick={onClaude} />}
     </svg>
   );
 }
 
-const WELCOME = "欢迎来到 WWFS办公室！鼠标放在同事身上看他在干什么，点一下进他的工位。";
+const CLAUDE_TEXT = "我是 Claude，正在各部门巡视：谁在岗、谁卡住了，这里都看得到。\n这里只看反馈；要给哪位同事交代事情，到 Claude 里跟我说。";
+const WELCOME = "欢迎来到 WWFS办公室！鼠标放在同事身上看他的定时任务和在干什么，头上有「!」就是卡住了。点一下看详细反馈。";
 
 export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
   const [who, setWho] = useState<PixelPerson | null>(null);
+  const [claude, setClaude] = useState(false);
   const full = useMemo(() => {
+    if (!who && claude) return CLAUDE_TEXT;
     if (!who) return WELCOME;
     if (who.seat) return `${who.name}：${who.title}。这个位子还空着，宣发移交的客户先放在看板「移交销售」。`;
-    const t = who.task ? `正在：${who.task}` : "手上没事。";
-    return `${who.name}（${who.title}${who.tags ? " · " + who.tags.replace(/,/g, "/") : ""}）· ${who.statusLabel}\n${t}${who.unread ? `\n你有 ${who.unread} 条留言他还没看。` : ""}`;
-  }, [who]);
+    const lines = [`${who.name}（${who.title}${who.tags ? " · " + who.tags.replace(/,/g, "/") : ""}）· ${who.statusLabel}`];
+    // 2026-11-03 Wallace：「感叹号证明卡住了，鼠标滑到这个人身上的时候，显示这个人的定时任务和周期」
+    if (who.mood === "alert" && who.stuck) lines.push(`❗ ${who.stuck}`);
+    if (who.schedule || who.every) lines.push(`⏰ 定时任务：${who.schedule || "未填"}${who.every ? " · " + who.every : ""}${who.host ? " · " + who.host : ""}`);
+    if (who.lastRun !== undefined) lines.push(`🕘 上次运行：${who.lastRun || "还没打过卡"}`);
+    lines.push(who.task ? `正在：${who.task}` : "手上没事。");
+    if (who.unread) lines.push(`你有 ${who.unread} 条留言他还没看。`);
+    return lines.join("\n");
+  }, [who, claude]);
   const [shown, setShown] = useState("");
   useEffect(() => {
     setShown("");
@@ -728,18 +787,39 @@ export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
   return (
     <div className="px-office rounded-2xl overflow-hidden border-4 border-[#3a2a20] shadow-xl bg-[#7a5a3f]">
       <div className="hidden md:block">
-        <Map rooms={rooms} cols={3} onHover={setWho} onLeave={leave} />
+        <Map rooms={rooms} cols={3} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} />
       </div>
       <div className="md:hidden">
-        <Map rooms={rooms} cols={2} onHover={setWho} onLeave={leave} />
+        <Map rooms={rooms} cols={2} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} />
       </div>
       {/* GBA 式对话框 */}
       <div className="bg-[#3a2a20] p-2">
-        <div className="px-dialog relative rounded-md bg-[#fffdf4] border-4 border-double border-[#4a6fd8] px-4 py-3 min-h-[4.5rem] text-[15px] leading-relaxed text-[#2a1e1a] whitespace-pre-wrap">
+        <div className="px-dialog relative rounded-md bg-[#fffdf4] border-4 border-double border-[#4a6fd8] px-4 py-3 min-h-[7.5rem] text-[15px] leading-relaxed text-[#2a1e1a] whitespace-pre-wrap">
           {shown}
+          {claude && !who && (
+            <div className="mt-2 flex items-center gap-3">
+              <a href="https://claude.ai" target="_blank" rel="noreferrer" className="inline-block rounded border-2 border-[#2a1e1a] bg-[#d4704f] text-white px-3 py-1 text-sm hover:brightness-110">
+                ▶ 去 Claude 发布指令
+              </a>
+              <button type="button" className="text-sm text-stone-500 underline" onClick={() => setClaude(false)}>
+                关闭
+              </button>
+            </div>
+          )}
           <span className="px-caret absolute right-3 bottom-2 text-[#4a6fd8]">▼</span>
         </div>
       </div>
     </div>
+  );
+}
+
+/** 工位页头像：跟办公室里同一个像素小人，放大显示。 */
+export function PixelPortrait({ who, name, mood, size = 96 }: { who: string; name: string; mood: PixelPerson["mood"]; size?: number }) {
+  const p: PixelPerson = { key: who, name, title: "", tags: null, href: "", mood, statusLabel: "", task: null, unread: 0 };
+  return (
+    <svg viewBox="-4 -22 36 52" width={size} height={(size * 52) / 36} shapeRendering="crispEdges" className="px-office shrink-0" aria-hidden>
+      <Person p={p} x={0} y={0} />
+      <Bubble p={p} x={12} y={-6} />
+    </svg>
   );
 }
