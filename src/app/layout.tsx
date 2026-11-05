@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getCurrentUser, canAccess } from "@/lib/auth";
 import MobileNav from "./_components/MobileNav";
+import RefreshLogo from "./_components/RefreshLogo";
 
 export const metadata: Metadata = {
   title: "WWFS办公室",
@@ -36,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {/* 桌面端侧栏；手机上隐藏，用上面的 MobileNav 抽屉 */}
             <aside className="hidden md:flex w-56 shrink-0 bg-stone-900 text-stone-100 flex-col">
               <div className="px-6 py-5 border-b border-stone-800 flex items-center gap-3">
-                <img src="/icon.svg" alt="WWFS办公室" className="w-9 h-9 rounded-xl shadow-md shrink-0" />
+                <RefreshLogo className="w-9 h-9 rounded-xl shadow-md" />
                 <div>
                   <div className="text-base font-semibold">WWFS办公室</div>
                   <div className="text-xs text-stone-400 mt-0.5">虚拟办公室</div>

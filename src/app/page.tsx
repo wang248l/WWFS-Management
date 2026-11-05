@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { loadOffice, loadPromo, PROMO_FIELDS, STATUS_LABEL } from "@/lib/office";
 import { moodFor } from "./_components/Avatar";
+import { stuckLine } from "@/lib/aiLog";
 import CountUp from "./_components/CountUp";
 import Sparkbars from "./_components/Sparkbars";
 import NeedsYou from "./_components/NeedsYou";
@@ -57,6 +58,8 @@ export default async function Lobby() {
         const lastTxt = last ? `${ago(last)}${a.lastRun?.task ? " · " + a.lastRun.task : ""}${a.lastRun?.status === "error" ? "（出错）" : ""}` : null;
         const stuck = need
           ? `${need.urgent ? "紧急" : "请求明天开会"}：${need.text.split("\n")[0]}`
+          : a.aiStuck.length
+            ? `${stuckLine(a.aiStuck[0])}${a.aiStuck.length > 1 ? `\n   …还有 ${a.aiStuck.length - 1} 件，点进去看` : ""}`
           : a.status === "late"
             ? `超时没跑：应该${a.schedule || `每 ${a.everyHours} 小时`}跑一次，上次 ${last ? ago(last) : "从没跑过"}`
             : a.status === "error"
@@ -69,7 +72,7 @@ export default async function Lobby() {
           tags: a.tags,
           href: `/office/${a.key}`,
           mood,
-          statusLabel: a.needs ? `有 ${a.needs} 件事找你` : STATUS_LABEL[a.status].label,
+          statusLabel: a.needs ? `有 ${a.needs} 件事找你` : a.aiStuck.length ? `卡住 ${a.aiStuck.length} 件` : STATUS_LABEL[a.status].label,
           task: now?.title || null,
           unread: a.unread,
           shared: !!a.host?.includes("共用"),
