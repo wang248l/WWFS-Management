@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { hoursAgo, type AgentStatus } from "./team";
+import { loadAiLog } from "./aiLog";
 
 /**
  * WWFS办公室（2026-11-03 Wallace：「把现在每一个正在工作的部门做一套管理系统」
@@ -53,7 +54,7 @@ export function agentStatus(a: { active: boolean; everyHours: number; graceHours
 }
 
 export async function loadOffice() {
-  const [agents, staff, needs] = await Promise.all([
+  const [agents, staff, needs, ai] = await Promise.all([
     db.agent.findMany({
       orderBy: [{ order: "asc" }, { name: "asc" }],
       include: {
@@ -68,16 +69,28 @@ export async function loadOffice() {
       orderBy: [{ urgent: "desc" }, { createdAt: "desc" }],
       include: { agent: { select: { key: true, name: true, avatar: true } } },
     }),
+    loadAiLog(),
   ]);
-  const agentRows = agents.map((a) => ({
+  const agentRows = agents.map((a) => {
+    // AI 工作日志里最近一条也算一次运行（Mac 上的任务不用另外打卡）
+    const log = ai.byAgent[a.key];
+    let lastRun: { status: string; task: string | null; summary: string | null; createdAt: Date; finishedAt: Date | null } | null = a.runs[0] || null;
+    if (log?.lastAt && (!lastRun || Date.parse(log.lastAt) > (lastRun.finishedAt || lastRun.createdAt).getTime())) {
+      lastRun = { status: log.lastStatus === "fail" ? "error" : "ok", task: log.lastMsg, summary: null, createdAt: new Date(log.lastAt), finishedAt: new Date(log.lastAt) };
+    }
+    const aiStuck = log?.stuck || [];
+    return {
     ...a,
-    status: agentStatus(a, a.runs[0]),
-    lastRun: a.runs[0] || null,
+    status: aiStuck.length ? ("error" as AgentStatus) : agentStatus(a, lastRun),
+    lastRun,
+    aiStuck,
+    ai24h: log ? { count: log.count24h, fail: log.fail24h } : null,
     unread: a.messages.length,
     needs: needs.filter((n) => n.agentId === a.id).length,
     // 24 小时内有卡挪到「完成」或「移交销售」= 有好消息，小人开心跳一下
     happy: a.tasks.some((t) => (t.status === "done" || t.status === "handoff") && Date.now() - t.updatedAt.getTime() < 86400_000),
-  }));
+    };
+  });
   const depts = new Set<string>([
     ...agentRows.map((a) => a.department || "未分部门"),
     ...staff.map((s) => s.department || "未分部门"),
@@ -97,6 +110,7 @@ export async function loadOffice() {
       openSeats: OPEN_SEATS.filter((s) => s.department === d),
     })),
     needs,
+    aiConnected: ai.ok,
     handoffCount: agentRows.reduce((n, a) => n + a.tasks.filter((t) => t.status === "handoff").length, 0),
   };
 }
