@@ -76,6 +76,7 @@ export default async function Lobby() {
           task: now?.title || null,
           unread: a.unread,
           shared: !!a.host?.includes("共用"),
+          device: a.key === "macmini",
           schedule: a.schedule,
           every: a.everyHours >= 24 && a.everyHours % 24 === 0 ? `每 ${a.everyHours / 24} 天一次` : `每 ${a.everyHours} 小时一次`,
           lastRun: lastTxt,

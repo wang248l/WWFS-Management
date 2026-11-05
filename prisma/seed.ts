@@ -202,6 +202,24 @@ async function main() {
       ],
     },
     {
+      // 2026-11-05 Wallace：「MAC 设备要单独成为一个角色」——Mark 和 Chase 共用的 Mac mini 本身
+      key: "macmini", name: "MAC", department: "社媒运营部", title: "Mac mini · Mark 和 Chase 共用的电脑", avatar: "🖥️", order: 1,
+      tags: "剪辑机,发布机,定时任务",
+      duty: "跑所有定时任务：剪辑、质检、手机发布、登录巡检、日报；AI 工作日志 2 小时没有新记录 = 它可能停了",
+      host: "Mac mini", schedule: "24 小时在线", everyHours: 1, graceHours: 1,
+      persona: "你是 MAC，Mark 和 Chase 共用的 Mac mini。",
+      tasks: [],
+    },
+    {
+      // 2026-11-05 Wallace：「加一个检查员吧，放在市场的办公室里面」——跑 Mac 上的倒推检查 ~/autocut/backtrace.py
+      key: "inspector", name: "Ivy", department: "市场部", title: "检查员", avatar: "🔍", order: 2,
+      tags: "第三方核对,倒推检查,断更",
+      duty: "站在外人的角度核对到底发出去没有：不登录去各平台公开页看（YouTube RSS、小红书主页），对不上就报；再从结果倒推 发布 → 成片 → 剪辑 → 原片 → 扫描，找出断在哪一环",
+      host: "Mac mini", schedule: "每天 09:00 / 16:00（跟每日报告一起）", everyHours: 12, graceHours: 2,
+      persona: "你是 Ivy，WWFS 的检查员，从结果往回查谁卡住了。",
+      tasks: [],
+    },
+    {
       // 2026-11-03 Wallace：「销售部加入销售经理 Bob」——数字员工 wwfs-agent-salesmgr
       key: "bob", name: "Bob", department: "销售部", title: "销售经理", avatar: "📈", order: 5,
       tags: "转化,跟进,复盘",

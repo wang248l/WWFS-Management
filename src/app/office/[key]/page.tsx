@@ -93,6 +93,30 @@ export default async function Desk({ params }: { params: { key: string } }) {
 
       <NeedsYou needs={needs} link={false} />
 
+      {ai?.findings && (
+        <section className="rise card p-4">
+          <h2 className="font-semibold">🔍 Ivy 最近 24 小时查出的问题（{ai.findings.length}）</h2>
+          <p className="text-xs text-stone-500 mt-0.5">
+            不信台账，不登录去公开页看到底发没发出去（YouTube、小红书）；再从结果倒推卡在哪一环。上次检查：{ai.lastMsg || "—"}
+          </p>
+          {!ai.findings.length && <p className="text-sm text-emerald-700 mt-2">✅ 没有问题。</p>}
+          <ul className="mt-2 space-y-2 text-sm">
+            {ai.findings.map((e) => (
+              <li key={e.id} className="rounded-lg bg-red-50 px-3 py-2">
+                <div className="flex gap-2 text-xs text-stone-500">
+                  {e.ip !== "-" && <span>{e.ip}</span>}
+                  {e.platform !== "-" && <span>{e.platform}</span>}
+                  <span className="ml-auto">{when(new Date(e.ts))}</span>
+                </div>
+                <div className="font-medium text-red-900">{e.msg}</div>
+                {e.why && <div className="text-xs text-stone-600 mt-0.5">原因：{e.why}</div>}
+                {e.fix && <div className="text-xs text-stone-600">查：{e.fix}</div>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {aiStuck.length > 0 && (
         <section className="rise rounded-2xl border-2 border-red-200 bg-red-50/60 p-4">
           <h2 className="font-semibold">❗ 卡住了 · 来自 AI 工作日志（{aiStuck.length} 件）</h2>
