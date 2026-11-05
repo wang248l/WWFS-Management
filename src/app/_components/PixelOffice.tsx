@@ -31,6 +31,7 @@ export type PixelPerson = {
   host?: string | null;
   stuck?: string | null; // 头上「!」的原因
   seat?: boolean; // 空位（招聘中）
+  device?: boolean; // 设备本身是一个角色（MAC：Mark 和 Chase 共用的电脑）
 };
 export type PixelRoom = { name: string; people: PixelPerson[] };
 
@@ -139,6 +140,8 @@ const LOOKS: Record<string, Look> = {
   // 销售经理 Bob：西装领带；会计 Tina：眼镜 + 发髻
   bob: { hair: "#4a3424", skin: "#f1c29c", shirt: "#2f3a5c", dark: "#d9452f", face: FACE_SHORT, body: [".OCCCWWCCCO.", "OCCCWDDWCCCO", "OCCCCDDCCCCO"], extra: { W: "#ffffff" } },
   tina: { hair: "#2a1a14", skin: "#f8d5b8", shirt: "#4c9a6a", dark: "#357350", face: FACE_BUN, glasses: true },
+  // 检查员 Ivy：格子侦探帽 + 驼色风衣（原创）
+  inspector: { hair: "#5a3a22", skin: "#f8d5b8", shirt: "#c69a5b", dark: "#8f6a38", face: FACE_CAP, body: [".OCCCCCCCCO.", "OCDCCCCCCDCO", "OCDCCCCCCDCO"], extra: { K: "#7a5c3a", Y: "#5c4329", W: "#c9a66b" } },
   ryzen: { hair: "#555a66", skin: "#eebf98", shirt: "#64748b", dark: "#46505f", face: FACE_SHORT },
   amelia: { hair: "#3a2418", skin: "#f8d2b4", shirt: "#ec5f9e", dark: "#be3d77", face: FACE_LONG },
   ishan: { hair: "#15151c", skin: "#b9805a", shirt: "#2f9e57", dark: "#21763f", face: FACE_SHORT },
@@ -209,7 +212,7 @@ function Person({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
 }
 
 // ---- 家具 ----------------------------------------------------------------
-function Desk({ x, y, w, on, imac }: { x: number; y: number; w: number; on: boolean; imac?: boolean }) {
+function Desk({ x, y, w, on, imac, bare }: { x: number; y: number; w: number; on: boolean; imac?: boolean; bare?: boolean }) {
   return (
     <g>
       <rect x={x} y={y} width={w} height={14} fill="#8a5a33" />
@@ -217,7 +220,7 @@ function Desk({ x, y, w, on, imac }: { x: number; y: number; w: number; on: bool
       <rect x={x} y={y + 14} width={w} height={2} fill="#5e3b20" />
       <rect x={x + 2} y={y + 16} width={3} height={6} fill="#5e3b20" />
       <rect x={x + w - 5} y={y + 16} width={3} height={6} fill="#5e3b20" />
-      {imac ? (
+      {bare ? null : imac ? (
         <g>
           <rect x={x + w / 2 - 13} y={y - 20} width={26} height={18} fill="#d8d8de" />
           <rect x={x + w / 2 - 11} y={y - 18} width={22} height={13} fill={on ? "#7fc3ff" : "#3d3d4a"} className={on ? "px-screen" : ""} />
@@ -457,6 +460,70 @@ function MeetingTable({ x, y }: { x: number; y: number }) {
   );
 }
 
+
+// ---- 社媒运营部 = 拍摄工作室（2026-11-05 Wallace：「市场运营的办公室换一下风格，加入打光灯，摄像机，手机支架这样的元素，
+// 然后 MAC 设备要单独成为一个角色」）。全是原创像素。----
+function Softbox({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <path d={`M${x} ${y}h22l-4 16h-14z`} fill="#2d2d3a" />
+      <rect x={x + 3} y={y + 2} width={16} height={11} fill="#fff6d6" className="px-screen" />
+      <rect x={x + 10} y={y + 16} width={2} height={22} fill="#55555f" />
+      <path d={`M${x + 4} ${y + 40}l7 -4l7 4`} stroke="#55555f" strokeWidth={2} fill="none" />
+    </g>
+  );
+}
+function PhoneTripod({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={9} height={15} rx={1} fill="#1f1f28" />
+      <rect x={x + 1} y={y + 1} width={7} height={12} fill="#7fc3ff" className="px-screen" />
+      <rect x={x + 6} y={y + 2} width={1} height={1} fill="#ff4d4d" className="px-rec" />
+      <rect x={x + 4} y={y + 15} width={2} height={18} fill="#55555f" />
+      <path d={`M${x - 1} ${y + 36}l6 -4l6 4`} stroke="#55555f" strokeWidth={2} fill="none" />
+      <circle cx={x + 4.5} cy={y + 7} r={11} fill="none" stroke="#fff6c8" strokeWidth={2} opacity={0.9} />
+    </g>
+  );
+}
+function OnAir({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={22} height={10} rx={2} fill="#3a1a1a" />
+      <text x={x + 11} y={y + 7.5} textAnchor="middle" fontSize={6} fill="#ff5a5a" className="px-font px-rec" fontWeight={700}>
+        ● REC
+      </text>
+    </g>
+  );
+}
+/** MAC：Mark 和 Chase 共用的那台电脑，自己是一个角色——屏幕就是它的脸。 */
+function MacFace({ x, y, mood }: { x: number; y: number; mood: PixelPerson["mood"] }) {
+  const screen = mood === "alert" ? "#ff8a8a" : mood === "sleep" ? "#3d3d4a" : "#7fc3ff";
+  return (
+    <g className="px-bob">
+      <rect x={x} y={y} width={30} height={22} fill="#d8d8de" />
+      <rect x={x + 2} y={y + 2} width={26} height={16} fill={screen} className={mood === "sleep" ? "" : "px-screen"} />
+      {mood === "sleep" ? (
+        <g fill="#9a9aa8">
+          <rect x={x + 8} y={y + 9} width={4} height={1} />
+          <rect x={x + 18} y={y + 9} width={4} height={1} />
+        </g>
+      ) : (
+        <g fill="#1a1420">
+          <rect x={x + 9} y={y + 7} width={3} height={4} />
+          <rect x={x + 18} y={y + 7} width={3} height={4} />
+          <g className="px-blink" fill={screen}>
+            <rect x={x + 9} y={y + 7} width={3} height={4} />
+            <rect x={x + 18} y={y + 7} width={3} height={4} />
+          </g>
+        </g>
+      )}
+      <rect x={x + (mood === "alert" ? 13 : 12)} y={y + 13} width={mood === "alert" ? 4 : 6} height={mood === "alert" ? 3 : 1} fill="#1a1420" />
+      <rect x={x + 12} y={y + 22} width={6} height={3} fill="#b9b9c2" />
+      <rect x={x + 9} y={y + 25} width={12} height={2} fill="#b9b9c2" />
+    </g>
+  );
+}
+
 const ROOM_FLOOR: Record<string, [string, string]> = {
   社媒运营部: ["#d7e8f7", "#c9def2"],
   市场部: ["#8fd16a", "#82c75e"], // 草地
@@ -477,14 +544,16 @@ function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y:
   const router = useRouter();
   const [f1, f2] = ROOM_FLOOR[room.name] || ["#ece6dc", "#e2dacd"];
   const farm = room.name === "市场部";
+  const studio = room.name === "社媒运营部";
+  const macDev = room.people.find((p) => p.device);
   const tiles: JSX.Element[] = [];
   for (let ty = 2; ty < 9; ty++)
     for (let tx = 0; tx < 12; tx++)
       tiles.push(<rect key={`${tx}-${ty}`} x={x + tx * TILE} y={y + ty * TILE} width={TILE} height={TILE} fill={(tx + ty) % 2 ? f1 : f2} />);
 
   // 座位：共用的两个人一张长桌一台 iMac，其他人各一张桌
-  const shared = room.people.filter((p) => p.shared);
-  const solo = room.people.filter((p) => !p.shared);
+  const shared = room.people.filter((p) => p.shared && !p.device);
+  const solo = room.people.filter((p) => !p.shared && !p.device);
   type Slot = { people: PixelPerson[]; w: number };
   const slots: Slot[] = [];
   if (shared.length >= 2) slots.push({ people: shared, w: 110 });
@@ -519,7 +588,16 @@ function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y:
       <rect x={x + ROOM_W / 2 - 12} y={y + ROOM_H - 3} width={24} height={4} fill={f1} />
 
       {/* 装饰 */}
-      {farm ? (
+      {studio && (
+        <g>
+          <OnAir x={x + 136} y={y + 9} />
+          <Softbox x={x + 6} y={y + 40} />
+          <Softbox x={x + ROOM_W - 30} y={y + 40} />
+          <PhoneTripod x={x + 12} y={y + ROOM_H - 40} />
+          <Camera x={x + ROOM_W - 52} y={y + ROOM_H - 30} />
+        </g>
+      )}
+      {studio ? null : farm ? (
         <g>
           <FarmPlot x={x + 8} y={y + 40} />
           <WateringCan x={x + 14} y={y + 80} />
@@ -590,8 +668,24 @@ function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y:
                 </g>
               );
             })}
-            <Desk x={sx} y={deskY} w={s.w} on={on} imac={n > 1} />
-            {n > 1 && (
+            <Desk x={sx} y={deskY} w={s.w} on={on} imac={n > 1 && !macDev} bare={n > 1 && !!macDev} />
+            {n > 1 && macDev && (
+              // 共用的那台 MAC 自己是一个角色：坐在两个人中间的桌上
+              <g
+                className="px-person cursor-pointer"
+                onClick={() => router.push(macDev.href)}
+                onMouseEnter={() => onHover(macDev)}
+                onMouseLeave={onLeave}
+              >
+                <MacFace x={sx + s.w / 2 - 15} y={deskY - 26} mood={macDev.mood} />
+                <Bubble p={macDev} x={sx + s.w / 2 + 2} y={deskY - 30} />
+                <g className="px-cursor">
+                  <path d={`M${sx + s.w / 2 - 5} ${deskY - 40}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
+                </g>
+                <PixelLabel x={sx + s.w / 2} y={deskY + 12} text="MAC" />
+              </g>
+            )}
+            {n > 1 && !macDev && (
               <text x={sx + s.w / 2} y={deskY + 11} textAnchor="middle" fontSize={6} fill="#fff8e7" className="px-font">
                 共用一台 Mac
               </text>
