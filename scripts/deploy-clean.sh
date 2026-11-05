@@ -27,14 +27,28 @@ git archive --format=tar -o "$ARCHIVE" HEAD
 scp -o StrictHostKeyChecking=no -q "$ARCHIVE" "$USER_NAME@$HOST:/root/wwfs-management-clean-deploy.tar"
 rm -f "$ARCHIVE"
 
-ssh -o StrictHostKeyChecking=no "$USER_NAME@$HOST" bash -s -- "$REMOTE_DIR" "$COMMIT" <<'REMOTE'
+# ssh 会把参数拼成一行字符串，空参数会被吃掉 → 目录没指定时传「-」占位（2026-11-03 第一次部署就踩了这个坑）
+ssh -o StrictHostKeyChecking=no "$USER_NAME@$HOST" bash -s -- "${REMOTE_DIR:--}" "$COMMIT" <<'REMOTE'
 set -e
 REMOTE_DIR="$1"; COMMIT="$2"
+[ "$REMOTE_DIR" = "-" ] && REMOTE_DIR=""
+# 清掉 2026-11-03 那次参数错位留下的东西（目录 /root/<commit>、空网络、空卷），只在没有容器在用时才删
+for junk in 4774d94; do
+  [ -d "/root/$junk" ] && rm -rf "/root/$junk"
+  docker network rm "${junk}_default" >/dev/null 2>&1 || true
+  docker volume rm "${junk}_management-data" >/dev/null 2>&1 || true
+done
 # 没指定目录就问正在跑的容器：compose 把工作目录记在 label 里
 if [ -z "$REMOTE_DIR" ]; then
   REMOTE_DIR=$(docker inspect management --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' 2>/dev/null || true)
 fi
 REMOTE_DIR="${REMOTE_DIR:-/root/WWFS-Management}"
+# 正在跑的容器如果属于别的目录，换目录重建会撞名字 —— 宁可停下也不乱建
+LIVE_DIR=$(docker inspect management --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' 2>/dev/null || true)
+if [ -n "$LIVE_DIR" ] && [ "$LIVE_DIR" != "$REMOTE_DIR" ]; then
+  echo "Refusing deploy: running container belongs to $LIVE_DIR, not $REMOTE_DIR" >&2
+  exit 3
+fi
 echo "Deploying $COMMIT to $REMOTE_DIR"
 STAMP=$(date +%Y%m%d%H%M%S)
 BACKUP_DIR=/root/WWFS-Management.backups
