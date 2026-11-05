@@ -213,8 +213,8 @@ async function main() {
     {
       // 2026-11-05 Wallace：「加一个检查员吧，放在市场的办公室里面」——跑 Mac 上的倒推检查 ~/autocut/backtrace.py
       key: "inspector", name: "Ivy", department: "市场部", title: "检查员", avatar: "🔍", order: 2,
-      tags: "第三方核对,倒推检查,断更",
-      duty: "站在外人的角度核对到底发出去没有：不登录去各平台公开页看（YouTube RSS、小红书主页），对不上就报；再从结果倒推 发布 → 成片 → 剪辑 → 原片 → 扫描，找出断在哪一环",
+      tags: "手机,登录,封号,发布节奏,公开页核对",
+      duty: "专门的巡检员，每天 9:00 / 16:00 巡检：📱 所有手机连没连上 · 🔑 所有账号登录正常没有 · 🚫 有没有封号限流 · ⏱ 视频有没有按规定速度发 · 👀 站在外人角度去公开页看到底发出去没有",
       host: "Mac mini", schedule: "每天 09:00 / 16:00（跟每日报告一起）", everyHours: 12, graceHours: 2,
       persona: "你是 Ivy，WWFS 的检查员，从结果往回查谁卡住了。",
       tasks: [],
@@ -248,7 +248,12 @@ async function main() {
   ];
   // 2026-11-03 Wallace：「社交媒体总运营是 Mark……剪辑和发布叫 Chase，Chase 和 Mark 共用一台 Mac」。
   // 还是种子默认值的老行直接换成新资料（名单页改过的不动）。
-  const RENAMED: Record<string, Record<string, string>> = { mac: { name: "MAC" }, mark: { title: "运营经理" } };
+  const RENAMED: Record<string, Record<string, string>> = {
+    mac: { name: "MAC" },
+    mark: { title: "运营经理" },
+    // 2026-11-05 Ivy 的职责扩成每日巡检清单
+    inspector: { duty: "站在外人的角度核对到底发出去没有：不登录去各平台公开页看（YouTube RSS、小红书主页），对不上就报；再从结果倒推 发布 → 成片 → 剪辑 → 原片 → 扫描，找出断在哪一环" },
+  };
   for (const o of OFFICE) {
     const { tasks, ...fields } = o;
     let agent = await prisma.agent.findUnique({ where: { key: o.key } });

@@ -95,15 +95,17 @@ export default async function Desk({ params }: { params: { key: string } }) {
 
       {ai?.findings && (
         <section className="rise card p-4">
-          <h2 className="font-semibold">🔍 Ivy 最近 24 小时查出的问题（{ai.findings.length}）</h2>
+          <h2 className="font-semibold">🔍 Ivy 每日巡检 · 最近 24 小时查出的问题（{ai.findings.length}）</h2>
+          <p className="text-sm font-medium mt-1">{ai.lastMsg || "还没巡检过"}</p>
           <p className="text-xs text-stone-500 mt-0.5">
-            不信台账，不登录去公开页看到底发没发出去（YouTube、小红书）；再从结果倒推卡在哪一环。上次检查：{ai.lastMsg || "—"}
+            📱 手机连接 · 🔑 账号登录 · 🚫 封号限流 · ⏱ 发布节奏 · 👀 公开页（不登录去看到底发没发出去，目前能看 YouTube 和小红书）
           </p>
           {!ai.findings.length && <p className="text-sm text-emerald-700 mt-2">✅ 没有问题。</p>}
           <ul className="mt-2 space-y-2 text-sm">
-            {ai.findings.map((e) => (
+            {[...ai.findings].sort((x, y) => (x.video || "").localeCompare(y.video || "")).map((e) => (
               <li key={e.id} className="rounded-lg bg-red-50 px-3 py-2">
                 <div className="flex gap-2 text-xs text-stone-500">
+                  {e.video?.startsWith("Ivy清单·") && <span className="badge bg-white text-stone-700">{e.video.slice(6)}</span>}
                   {e.ip !== "-" && <span>{e.ip}</span>}
                   {e.platform !== "-" && <span>{e.platform}</span>}
                   <span className="ml-auto">{when(new Date(e.ts))}</span>
