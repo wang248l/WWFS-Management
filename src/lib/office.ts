@@ -37,9 +37,15 @@ export const STATUS_LABEL: Record<AgentStatus, { label: string; cls: string; dot
 };
 
 /** 只看本地打卡的状态（办公室页不去拉 CRM/Marketing，打开要快）。 */
-export function agentStatus(a: { active: boolean; everyHours: number; graceHours: number }, lastRun?: { status: string; createdAt: Date; finishedAt: Date | null } | null): AgentStatus {
+/** 有没有排上定时任务（「待定」「未填」不算）。 */
+export function hasSchedule(a: { schedule?: string | null }): boolean {
+  return !!a.schedule && !/待定|未填/.test(a.schedule);
+}
+
+export function agentStatus(a: { active: boolean; everyHours: number; graceHours: number; schedule?: string | null }, lastRun?: { status: string; createdAt: Date; finishedAt: Date | null } | null): AgentStatus {
   if (!a.active) return "paused";
-  if (!lastRun) return "never";
+  // 2026-11-05 Wallace：「有定时任务的人不要显示在睡觉，只有目前没有任何定时任务的人才显示睡觉……就显示正在工作，像 Amelia 一样」
+  if (!lastRun) return hasSchedule(a) ? "ok" : "never";
   const h = hoursAgo((lastRun.finishedAt || lastRun.createdAt).toISOString())!;
   if (h > a.everyHours + a.graceHours) return "late";
   if (lastRun.status === "error") return "error";
