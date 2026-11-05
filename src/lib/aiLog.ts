@@ -7,17 +7,12 @@ import { getJson } from "./team";
  * 归属：mark:* / 报告 → Mark；剪辑、QC、发布、定时、登录检查、Drive上传、巡检、工单 → Chase（key mac）。
  * 卡住 = 同一件事（任务 + IP + 平台）最近一条是 fail，并且在 24 小时内；后面又成功了就不算。
  *
- * 还要按「结果」查（2026-11-05 Wallace：「之前就有一次，IG 连续五天没发东西，最后发现是 Claude 没有读到 Drive 里面的视频」——
- * 那次没报错，只是什么都没做）：近 14 天发过的每个「IP + 平台」，超过排程（Wallace 2 天、其他 IP 3 天）再加 1 天
- * 还没有一条发布成功，就算 Chase 卡住：「Amelia · IG 已经 5 天没发出去」。
+ * 「没报错、但什么都没发生」（2026-11-05 Wallace：「IG 连续五天没发东西……需要一套倒推的检查体系」）由 Mac 上的
+ * ~/autocut/backtrace.py 查：从每个 IP × 平台的发布结果往回推到 发布 / 成片 / 剪辑 / 原片 / 扫描，断在哪一环就记一条
+ * 「巡检」fail 进工作日志，这里照常读到，显示在 Chase 头上。
  */
 export type AiEntry = { id: string; ts: string; source: string; status: string; task: string; ip: string; platform: string; video: string; msg: string; where: string | null; why: string | null; fix: string | null };
 export type AiAgentState = { lastAt: string | null; lastMsg: string | null; lastStatus: string | null; stuck: AiEntry[]; count24h: number; fail24h: number };
-
-// IP 发布间隔（天），见 ip-posting-schedule：Wallace 每 2 天，其他每 3 天；再宽限 1 天才算断更
-const PUBLISH_EVERY_DAYS: Record<string, number> = { Wallace: 2 };
-const PUBLISH_DEFAULT_DAYS = 3;
-const PUBLISH_GRACE_DAYS = 1;
 
 const CHASE_TASKS = new Set(["剪辑", "QC", "发布", "定时", "登录检查", "Drive上传", "巡检", "工单"]);
 
@@ -33,7 +28,7 @@ export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string
   const base = process.env.MARKETING_API_BASE;
   const key = process.env.MARKETING_API_KEY;
   if (!base || !key) return { ok: false, byAgent: {} };
-  const r = await getJson<{ entries: AiEntry[] }>(`${base.replace(/\/$/, "")}/api/agent/ai-log?hours=336&limit=3000`, { authorization: `Bearer ${key}` });
+  const r = await getJson<{ entries: AiEntry[] }>(`${base.replace(/\/$/, "")}/api/agent/ai-log?hours=48&limit=2000`, { authorization: `Bearer ${key}` });
   if (!r.ok) return { ok: false, byAgent: {} };
   const byAgent: Record<string, AiAgentState> = {};
   const latestByKey: Record<string, Record<string, AiEntry>> = {};
@@ -58,28 +53,6 @@ export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string
     byAgent[who].stuck = Object.values(m).filter((e) => e.status === "fail" && Date.parse(e.ts) >= day);
   }
 
-  // 断更：每个「IP + 平台」最后一次发布成功
-  const lastPublish: Record<string, AiEntry> = {};
-  for (const e of r.data.entries) {
-    if (e.task !== "发布" || e.status !== "ok" || e.ip === "-" || e.platform === "-") continue;
-    const k = `${e.ip}|${e.platform}`;
-    if (!lastPublish[k]) lastPublish[k] = e;
-  }
-  for (const e of Object.values(lastPublish)) {
-    const days = (Date.now() - Date.parse(e.ts)) / 86400_000;
-    const every = PUBLISH_EVERY_DAYS[e.ip] ?? PUBLISH_DEFAULT_DAYS;
-    if (days <= every + PUBLISH_GRACE_DAYS) continue;
-    const s = (byAgent.mac ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0 });
-    s.stuck.unshift({
-      ...e,
-      id: `gap-${e.ip}-${e.platform}`,
-      status: "fail",
-      msg: `${e.ip} · ${e.platform} 已经 ${Math.floor(days)} 天没发出去（应每 ${every} 天一条）`,
-      where: "发布结果（没有报错，但没有发布成功的记录）",
-      why: `最后一次发布成功：${e.ts.slice(0, 10)}「${e.msg.slice(0, 60)}」`,
-      fix: "查这个 IP 的成片有没有进 Drive、发布任务有没有跑",
-    });
-  }
   return { ok: true, byAgent };
 }
 
