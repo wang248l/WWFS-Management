@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import RefreshLogo from "./RefreshLogo";
 
 /**
  * 手机上的导航（2026-10-20 Wallace：「手机版边栏太大做成隐藏的」）。
@@ -26,7 +27,7 @@ export default function MobileNav({ nav, userName }: { nav: { href: string; labe
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <img src="/icon.svg" alt="" className="w-6 h-6 rounded-md" />
+        <RefreshLogo className="w-6 h-6 rounded-md" />
         <span className="text-sm font-semibold">{nav.find((n) => n.href === pathname)?.label || "WWFS办公室"}</span>
       </header>
 
@@ -41,7 +42,7 @@ export default function MobileNav({ nav, userName }: { nav: { href: string; labe
         }
       >
         <div className="px-5 py-4 border-b border-stone-800 flex items-center gap-3">
-          <img src="/icon.svg" alt="" className="w-8 h-8 rounded-xl" />
+          <RefreshLogo className="w-8 h-8 rounded-xl" />
           <div className="flex-1 text-base font-semibold">WWFS办公室</div>
           <button type="button" aria-label="关闭菜单" onClick={() => setOpen(false)} className="text-stone-400 text-2xl leading-none px-1">
             ×
