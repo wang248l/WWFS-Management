@@ -524,6 +524,28 @@ function MacFace({ x, y, mood }: { x: number; y: number; mood: PixelPerson["mood
   );
 }
 
+
+function Pantry({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      {/* 咖啡机 */}
+      <rect x={x} y={y + 6} width={30} height={10} fill="#8a5a33" />
+      <rect x={x + 4} y={y - 14} width={16} height={20} fill="#3d3d4a" />
+      <rect x={x + 7} y={y - 10} width={10} height={4} fill="#9fe08a" className="px-screen" />
+      <rect x={x + 9} y={y} width={6} height={6} fill="#fffdf4" />
+      <rect x={x + 10} y={y - 4} width={1} height={3} fill="#e8e8e8" className="px-zzz" />
+      {/* 沙发 */}
+      <rect x={x + 60} y={y + 4} width={56} height={12} fill="#d4704f" />
+      <rect x={x + 60} y={y - 6} width={56} height={10} fill="#e08a6a" />
+      <rect x={x + 56} y={y - 2} width={6} height={18} fill="#b85a3a" />
+      <rect x={x + 114} y={y - 2} width={6} height={18} fill="#b85a3a" />
+      {/* 小桌 + 杯子 */}
+      <rect x={x + 76} y={y + 26} width={26} height={10} fill="#8a5a33" />
+      <rect x={x + 84} y={y + 21} width={5} height={6} fill="#fffdf4" />
+    </g>
+  );
+}
+
 const ROOM_FLOOR: Record<string, [string, string]> = {
   社媒运营部: ["#d7e8f7", "#c9def2"],
   市场部: ["#8fd16a", "#82c75e"], // 草地
@@ -533,6 +555,7 @@ const ROOM_FLOOR: Record<string, [string, string]> = {
   销售部: ["#e4dff7", "#d8d1f2"],
   财务部: ["#f3eedb", "#ebe4cb"],
   会议室: ["#e9e4dc", "#dfd8cd"],
+  茶水间: ["#efe6d2", "#e6dbc3"],
 };
 
 const TILE = 16;
@@ -543,8 +566,8 @@ const HALL = 2 * TILE;
 function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
   const router = useRouter();
   const [f1, f2] = ROOM_FLOOR[room.name] || ["#ece6dc", "#e2dacd"];
-  const farm = room.name === "市场部";
-  const studio = room.name === "社媒运营部";
+  const farm = room.name === "市场部" || room.name === "推广区";
+  const studio = room.name === "社媒运营部" || room.name === "社媒运营区";
   const macDev = room.people.find((p) => p.device);
   const tiles: JSX.Element[] = [];
   for (let ty = 2; ty < 9; ty++)
@@ -617,6 +640,8 @@ function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y:
             <ChartBoard x={x + ROOM_W - 46} y={y + ROOM_H - 40} />
           ) : room.name === "财务部" ? (
             <Cabinet x={x + ROOM_W - 44} y={y + ROOM_H - 32} />
+          ) : room.name === "茶水间" ? (
+            <Pantry x={x + 30} y={y + 62} />
           ) : room.name === "会议室" ? (
             <MeetingTable x={x + 40} y={y + 62} />
           ) : (
@@ -888,26 +913,42 @@ function ClaudeOffice({ x, y, inside, onEnter, onClaude }: { x: number; y: numbe
           </g>
         )}
         <text x={x + 146} y={y + 140} textAnchor="middle" fontSize={7} fill="#3a2a20" className="px-font">
-          {inside.people.map((p) => p.name).join("、")} 在里面
+          {inside.people.length} 位同事在里面
         </text>
       </g>
     </g>
   );
 }
 
-/** 进门后的市场部大办公室：同一间房放大到整块画面，左上角回去。 */
+/**
+ * 进门后的市场部大办公室（2026-11-06 起社媒运营并进市场部）：两间打通——左边拍摄工作室（Mark、Chase、MAC），
+ * 右边农场（Leo、Ivy 等），中间墙上开门，顶上一块大招牌。左上角回去。
+ */
+const STUDIO_KEYS = new Set(["mark", "mac", "macmini"]);
 function BigRoom({ room, onHover, onLeave }: { room: PixelRoom; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+  const studio: PixelRoom = { name: "社媒运营区", people: room.people.filter((p) => STUDIO_KEYS.has(p.key)) };
+  const farm: PixelRoom = { name: "推广区", people: room.people.filter((p) => !STUDIO_KEYS.has(p.key)) };
+  const W = ROOM_W * 2 + 16;
   return (
-    <svg viewBox={`0 0 ${ROOM_W + 16} ${ROOM_H + 16}`} className="w-full h-auto block" shapeRendering="crispEdges" role="img" aria-label={`${room.name}办公室`}>
-      <rect width={ROOM_W + 16} height={ROOM_H + 16} fill="#7a5a3f" />
-      <Room room={room} x={8} y={8} onHover={onHover} onLeave={onLeave} />
+    <svg viewBox={`0 0 ${W} ${ROOM_H + 30}`} className="w-full h-auto block" shapeRendering="crispEdges" role="img" aria-label="市场部办公室">
+      <rect width={W} height={ROOM_H + 30} fill="#7a5a3f" />
+      <rect x={W / 2 - 70} y={3} width={140} height={18} fill="#3a2a20" />
+      <rect x={W / 2 - 68} y={5} width={136} height={14} fill="#fff8e7" />
+      <text x={W / 2} y={15.5} textAnchor="middle" fontSize={10} fill="#3a2a20" className="px-font" fontWeight={700}>
+        市场部 · 社媒运营 + 推广
+      </text>
+      <Room room={studio} x={8} y={24} onHover={onHover} onLeave={onLeave} />
+      <Room room={farm} x={8 + ROOM_W} y={24} onHover={onHover} onLeave={onLeave} />
+      {/* 两间打通：中间墙上开一个门洞 */}
+      <rect x={8 + ROOM_W - 3} y={24 + 4 * TILE} width={6} height={3 * TILE} fill="#cdb79a" />
     </svg>
   );
 }
 
 function Map({ rooms: real, cols, onHover, onLeave, onClaude, onEnter }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void; onClaude: () => void; onEnter: () => void }) {
   // 最后一排没坐满就补一间会议室（agent 请求开会就是约在这里）
-  const rooms = real.length % cols ? [...real, { name: "会议室", people: [] }] : real;
+  const rooms = [...real];
+  for (const filler of ["会议室", "茶水间"]) if (rooms.length % cols) rooms.push({ name: filler, people: [] });
   const rows = Math.ceil(rooms.length / cols);
   const W = cols * ROOM_W + (cols + 1) * 8;
   const H = rows * ROOM_H + (rows - 1) * HALL + 16;
