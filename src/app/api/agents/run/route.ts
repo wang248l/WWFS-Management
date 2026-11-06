@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { agentKeyOk } from "@/lib/agentKeys";
 
 /**
  * POST /api/agents/run — AI agent 打卡：每跑完一次（或开始/出错时）报一次。
@@ -17,11 +18,7 @@ import { db } from "@/lib/db";
  * }
  */
 export async function POST(req: NextRequest) {
-  const token = process.env.INGEST_TOKEN;
-  if (!token) return NextResponse.json({ error: "disabled (INGEST_TOKEN not set)" }, { status: 503 });
-  if ((req.headers.get("authorization") || "") !== `Bearer ${token}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  if (!(await agentKeyOk(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   let b: any;
   try {

@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { hoursAgo, type AgentStatus } from "./team";
 import { loadAiLog } from "./aiLog";
+import { agentKeyOk } from "./agentKeys";
 
 /**
  * WWFS办公室（2026-11-03 Wallace：「把现在每一个正在工作的部门做一套管理系统」
@@ -117,11 +118,9 @@ export async function loadOffice() {
   };
 }
 
-export function agentAuth(req: Request): string | null {
-  const token = process.env.INGEST_TOKEN;
-  if (!token) return "disabled (INGEST_TOKEN not set)";
-  if ((req.headers.get("authorization") || "") !== `Bearer ${token}`) return "unauthorized";
-  return null;
+/** 旧名字保留：返回 null = 通过；否则是错误原因。现在配对发的钥匙也认。 */
+export async function agentAuth(req: Request): Promise<string | null> {
+  return (await agentKeyOk(req)) ? null : "unauthorized";
 }
 
 /** 近 7 天宣发数字，按 agent 汇总 + 每天明细。 */

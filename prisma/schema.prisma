@@ -212,3 +212,46 @@ model Setting {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+// ---- Mac 上的员工直接往办公室推（2026-11-06 Wallace：「应该是 Management 有一个钥匙，Mark 要知道」「现在是 agent 要有读写功能」）----
+
+// 发给一台机器的读写钥匙。只存 SHA-256；明文只在配对那一刻交给那台机器一次。
+model AgentKey {
+  id         String    @id @default(cuid())
+  label      String // 「Mac mini（Mark / Leo / Chase / Ivy）」
+  tokenHash  String    @unique
+  prefix     String
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// 配对：机器先来登记（拿到一个短码），老板在「设置」页点批准，机器再来取一次钥匙（取完明文就删）。
+model PairRequest {
+  id         String    @id // 6 位短码，给老板核对
+  label      String
+  pollHash   String // 机器自己留着的轮询口令的 SHA-256，别人拿到短码也取不走钥匙
+  keyPlain   String? // 批准后、机器取走前暂存；取走立刻清空
+  approvedAt DateTime?
+  fetchedAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// AI 工作日志：Mac 推过来的每一条（按 Mac 的 id upsert）。办公室优先读这里，读不到再去 Marketing 拉。
+model AiLogEntry {
+  id        String   @id
+  ts        DateTime
+  source    String   @default("")
+  status    String
+  task      String   @default("其他")
+  ip        String   @default("-")
+  platform  String   @default("-")
+  video     String   @default("")
+  msg       String   @default("")
+  where     String?
+  why       String?
+  fix       String?
+  createdAt DateTime @default(now())
+
+  @@index([ts])
+}
