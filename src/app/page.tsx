@@ -27,7 +27,7 @@ function ago(d: Date) {
 }
 
 export default async function Lobby() {
-  const [{ departments, handoffCount, needs }, promo] = await Promise.all([loadOffice(), loadPromo()]);
+  const [{ departments, handoffCount, needs, human }, promo] = await Promise.all([loadOffice(), loadPromo()]);
   const officeAgents = departments.flatMap((d) => d.agents);
   const active = officeAgents.filter((a) => a.active);
   const onDuty = active.filter((a) => a.status === "ok").length;
@@ -139,6 +139,23 @@ export default async function Lobby() {
       </div>
 
       <NeedsYou needs={needs} />
+
+      {human.length > 0 && (
+        <section className="rise rounded-2xl border-2 border-amber-300 bg-amber-50 p-4">
+          <h2 className="font-semibold flex items-center gap-2">
+            <span className="text-xl">🙋</span> 需要你亲自处理 <span className="badge bg-amber-500 text-white">{human.length}</span>
+            <span className="text-xs font-normal text-stone-500">Ivy 最近一次巡检查出来的，AI 自己修不了</span>
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {human.map((e) => (
+              <li key={e.id} className="card p-3 text-sm">
+                <div className="font-medium">{e.msg.replace("【需要你】", "")}</div>
+                {e.fix && <div className="text-xs text-emerald-800 mt-1">✅ 解决办法：{e.fix}</div>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {tiles.map((s, i) => (

@@ -111,6 +111,7 @@ export async function loadOffice() {
     })),
     needs,
     aiConnected: ai.ok,
+    human: ai.human,
     handoffCount: agentRows.reduce((n, a) => n + a.tasks.filter((t) => t.status === "handoff").length, 0),
   };
 }
