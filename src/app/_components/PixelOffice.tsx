@@ -33,7 +33,7 @@ export type PixelPerson = {
   seat?: boolean; // 空位（招聘中）
   device?: boolean; // 设备本身是一个角色（MAC：Mark 和 Chase 共用的电脑）
 };
-export type PixelRoom = { name: string; people: PixelPerson[] };
+export type PixelRoom = { name: string; people: PixelPerson[]; shootStuck?: string | null };
 
 // ---- 像素小人 -------------------------------------------------------------
 // O 描边 H 头发 S 皮肤 E 眼睛 B 腮红 M 嘴 C 衣服 D 衣服暗部 G 眼镜 .透明
@@ -991,12 +991,13 @@ function Cargo({ stage, x, y }: { stage: number; x: number; y: number }) {
   }
 }
 
-function Conveyor({ x, y, w, people }: { x: number; y: number; w: number; people: PixelPerson[] }) {
+function Conveyor({ x, y, w, people, shootStuck }: { x: number; y: number; w: number; people: PixelPerson[]; shootStuck?: string | null }) {
   const n = STATIONS.length;
   const gap = (w - 40) / (n - 1);
   const sx = (i: number) => x + 20 + i * gap;
   const mood = (who?: string) => people.find((p) => p.key === who)?.mood;
-  const stuck = STATIONS.findIndex((st) => st.who && mood(st.who) === "alert");
+  // 拍摄提醒（稿给了 IP、2 天没新原片）：货停在「IP 拍摄」那站，不算在 Mark 头上
+  const stuck = shootStuck ? 1 : STATIONS.findIndex((st) => st.who && mood(st.who) === "alert");
   // 动画：每站停 1.2 秒、走 0.8 秒，一圈 12 秒
   const T = 12;
   const seg = T / n;
@@ -1018,7 +1019,7 @@ function Conveyor({ x, y, w, people }: { x: number; y: number; w: number; people
       </g>
       {/* 站点 */}
       {STATIONS.map((st, i) => {
-        const bad = st.who && mood(st.who) === "alert";
+        const bad = (st.key === "shoot" && !!shootStuck) || (!shootStuck && st.who && mood(st.who) === "alert");
         return (
           <g key={st.key}>
             <rect x={sx(i) - 26} y={y + 36} width={52} height={13} fill={bad ? "#e5383b" : "#3a2a20"} />
@@ -1077,7 +1078,12 @@ function BigRoom({ room, onHover, onLeave }: { room: PixelRoom; onHover: (p: Pix
       <Room room={farm} x={8 + ROOM_W} y={24} onHover={onHover} onLeave={onLeave} />
       {/* 两间打通：中间墙上开一个门洞 */}
       <rect x={8 + ROOM_W - 3} y={24 + 4 * TILE} width={6} height={3 * TILE} fill="#cdb79a" />
-      <Conveyor x={8} y={24 + ROOM_H + 6} w={W - 16} people={room.people} />
+      <Conveyor x={8} y={24 + ROOM_H + 6} w={W - 16} people={room.people} shootStuck={room.shootStuck} />
+      {room.shootStuck && (
+        <text x={8 + 20 + (W - 56) / 5} y={24 + ROOM_H + 66} textAnchor="middle" fontSize={6} fill="#ffe3e3" className="px-font">
+          {room.shootStuck}
+        </text>
+      )}
     </svg>
   );
 }
