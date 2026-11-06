@@ -50,9 +50,12 @@ export default async function Lobby() {
   // 拍摄提醒：Ivy 记的「mark:拍摄提醒」→ 市场部流水线停在 IP 拍摄
   const shoot = human.filter((e) => e.video === "mark:拍摄提醒");
   const shootStuck = shoot.length ? shoot.map((e) => e.msg.replace(/^【需要你】Ivy 拍摄：/, "").split("：")[0]).join("、") + " 没新原片" : null;
+  const unnumbered = human.filter((e) => e.video === "mark:视频编号");
+  const driveStuck = unnumbered.length ? `${unnumbered.length} 条原片对不上稿` : null;
   const rooms: PixelRoom[] = departments.map((d) => ({
     name: d.name,
     shootStuck: d.name === "市场部" ? shootStuck : null,
+    driveStuck: d.name === "市场部" ? driveStuck : null,
     people: [
       ...d.agents.map((a) => {
         const now = a.tasks.find((t) => t.status === "doing") || a.tasks.find((t) => t.status === "blocked") || a.tasks.find((t) => t.status === "todo");

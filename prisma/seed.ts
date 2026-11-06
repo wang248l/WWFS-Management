@@ -280,6 +280,17 @@ async function main() {
   // 2026-11-06 社媒运营部并进市场部：老库里还挂在社媒运营部的人一起搬过去
   await prisma.agent.updateMany({ where: { department: "社媒运营部" }, data: { department: "市场部" } });
   // 2026-11-06 Wallace：「Mark 是策划/文案，Leo 是剪辑，Chase 是发布，Ivy 是检查」——一次性改到位（Setting 里记一笔，之后在名单页改的不覆盖）
+  // 2026-11-06 Mark 加一项：整理 Drive、给新原片编号（按内容比对口播稿，~/autocut/registry.py）
+  if (!(await prisma.setting.findUnique({ where: { key: "migration:mark-numbering-20261106" } }))) {
+    await prisma.agent.updateMany({
+      where: { key: "mark" },
+      data: {
+        tags: "选题,出稿,文案,视频编号,数据分析",
+        duty: "策划和文案：选题、写口播稿和标题文案、看数据定方向；整理 Drive、给每条新原片按内容对上稿子编号（W-2610-03 这样）；Marketing 网站值班",
+      },
+    });
+    await prisma.setting.create({ data: { key: "migration:mark-numbering-20261106", value: new Date().toISOString() } });
+  }
   const ROLES_MARK = "migration:roles-20261106";
   if (!(await prisma.setting.findUnique({ where: { key: ROLES_MARK } }))) {
     const roles: Record<string, Record<string, unknown>> = {
