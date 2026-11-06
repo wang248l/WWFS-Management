@@ -136,3 +136,5 @@
   0%, 10% { opacity: 0 } 11%, 16% { opacity: 1 } 17%, 26% { opacity: 0 } 27%, 32% { opacity: 1 } 33%, 42% { opacity: 0 }
   43%, 50% { opacity: 1 } 51%, 60% { opacity: 0 } 61%, 66% { opacity: 1 } 67%, 76% { opacity: 0 } 77%, 82% { opacity: 1 } 83%, 100% { opacity: 0 }
 }
+.px-arrow { animation: px-arrow 0.9s steps(3) infinite; }
+@keyframes px-arrow { 0%,100% { transform: translateX(0) } 50% { transform: translateX(3px) } }

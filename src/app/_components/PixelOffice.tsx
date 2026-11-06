@@ -824,7 +824,88 @@ function ClaudePatrol({ x, y, w, onClick }: { x: number; y: number; w: number; o
   );
 }
 
-function Map({ rooms: real, cols, onHover, onLeave, onClaude }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void; onClaude: () => void }) {
+
+// ---- 市场部单独一间大办公室（2026-11-05 Wallace：「Marketing 的办公室要稍微大一点……设置 Claude 在办公，然后市场部办公室隐藏，
+// 显示一个箭头，点一下就进入市场部办公室，要求逐渐变成黑屏，再从黑屏渐显的动画」）。地图上原来市场部的格子 = Claude 的办公室 + 一扇门。----
+const BIG_ROOM = "市场部";
+
+function ClaudeOffice({ x, y, inside, onEnter, onClaude }: { x: number; y: number; inside: PixelRoom; onEnter: () => void; onClaude: () => void }) {
+  const tiles: JSX.Element[] = [];
+  for (let ty = 2; ty < 9; ty++)
+    for (let tx = 0; tx < 12; tx++)
+      tiles.push(<rect key={`${tx}-${ty}`} x={x + tx * TILE} y={y + ty * TILE} width={TILE} height={TILE} fill={(tx + ty) % 2 ? "#f6e3d6" : "#efd6c6"} />);
+  const alert = inside.people.some((p) => p.mood === "alert");
+  const deskY = y + 4 * TILE + 26;
+  return (
+    <g>
+      {tiles}
+      <rect x={x} y={y} width={ROOM_W} height={2 * TILE} fill="#b86a4b" />
+      <rect x={x} y={y + 2 * TILE - 4} width={ROOM_W} height={4} fill="#8a4a33" />
+      <rect x={x + 20} y={y + 6} width={30} height={18} fill="#9fd6ff" stroke="#f3efe6" strokeWidth={2} />
+      <rect x={x + 34} y={y + 6} width={2} height={18} fill="#f3efe6" />
+      <rect x={x + 60} y={y + 6} width={72} height={16} fill="#3a2a20" />
+      <rect x={x + 62} y={y + 8} width={68} height={12} fill="#fff8e7" />
+      <text x={x + 96} y={y + 17.5} textAnchor="middle" fontSize={9} fill="#3a2a20" className="px-font" fontWeight={700}>
+        Claude 办公室
+      </text>
+      <rect x={x} y={y} width={ROOM_W} height={ROOM_H} fill="none" stroke="#5e3b20" strokeWidth={3} />
+      <Plant x={x + 6} y={y + ROOM_H - 26} />
+
+      {/* Claude 坐在桌前办公（点它 = 去 Claude 发布指令） */}
+      <g className="px-person cursor-pointer" onClick={onClaude}>
+        <Chair x={x + 36} y={deskY - 22} />
+        <g className="px-bob">
+          <Pixels rows={CLAUDE_SPRITE.slice(0, 11)} pal={CLAUDE_PAL} x={x + 34} y={deskY - 30} />
+          <Pixels rows={["OSKKKKKKKKSO"]} pal={CLAUDE_PAL} x={x + 34} y={deskY - 8} className="px-frame-a" />
+          <Pixels rows={["OKKSSKKSSKKO"]} pal={CLAUDE_PAL} x={x + 34} y={deskY - 8} className="px-frame-b" />
+        </g>
+        <Desk x={x + 18} y={deskY} w={60} on={true} />
+        <g className="px-cursor">
+          <path d={`M${x + 41} ${deskY - 52}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
+        </g>
+        <PixelLabel x={x + 46} y={deskY + 34} text="Claude" />
+      </g>
+
+      {/* 门：通往市场部大办公室 */}
+      <g className="px-person cursor-pointer" onClick={onEnter}>
+        <rect x={x + 120} y={y + 36} width={52} height={78} fill="transparent" />
+        <rect x={x + 128} y={y + 44} width={36} height={60} fill="#6b4426" stroke="#3e2716" strokeWidth={2} />
+        <rect x={x + 132} y={y + 48} width={28} height={24} fill="#8a5a33" />
+        <rect x={x + 132} y={y + 76} width={28} height={24} fill="#8a5a33" />
+        <circle cx={x + 157} cy={y + 76} r={2} fill="#f2c230" />
+        <rect x={x + 122} y={y + 32} width={48} height={12} fill="#2f8f4e" stroke="#1f5e33" strokeWidth={1} />
+        <text x={x + 146} y={y + 41} textAnchor="middle" fontSize={8} fill="#fff" className="px-font" fontWeight={700}>
+          {BIG_ROOM}
+        </text>
+        <g className="px-arrow">
+          <path d={`M${x + 136} ${y + 112}h12v-5l9 9l-9 9v-5h-12z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1.5} />
+        </g>
+        {alert && (
+          <g className="px-bang">
+            <rect x={x + 168} y={y + 40} width={10} height={13} fill="#fff" stroke="#2a1e1a" strokeWidth={1.5} />
+            <rect x={x + 172} y={y + 42} width={2} height={6} fill="#e5383b" />
+            <rect x={x + 172} y={y + 50} width={2} height={2} fill="#e5383b" />
+          </g>
+        )}
+        <text x={x + 146} y={y + 140} textAnchor="middle" fontSize={7} fill="#3a2a20" className="px-font">
+          {inside.people.map((p) => p.name).join("、")} 在里面
+        </text>
+      </g>
+    </g>
+  );
+}
+
+/** 进门后的市场部大办公室：同一间房放大到整块画面，左上角回去。 */
+function BigRoom({ room, onHover, onLeave }: { room: PixelRoom; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+  return (
+    <svg viewBox={`0 0 ${ROOM_W + 16} ${ROOM_H + 16}`} className="w-full h-auto block" shapeRendering="crispEdges" role="img" aria-label={`${room.name}办公室`}>
+      <rect width={ROOM_W + 16} height={ROOM_H + 16} fill="#7a5a3f" />
+      <Room room={room} x={8} y={8} onHover={onHover} onLeave={onLeave} />
+    </svg>
+  );
+}
+
+function Map({ rooms: real, cols, onHover, onLeave, onClaude, onEnter }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void; onClaude: () => void; onEnter: () => void }) {
   // 最后一排没坐满就补一间会议室（agent 请求开会就是约在这里）
   const rooms = real.length % cols ? [...real, { name: "会议室", people: [] }] : real;
   const rows = Math.ceil(rooms.length / cols);
@@ -839,7 +920,9 @@ function Map({ rooms: real, cols, onHover, onLeave, onClaude }: { rooms: PixelRo
       {rooms.map((room, i) => {
         const c = i % cols;
         const r = Math.floor(i / cols);
-        return <Room key={room.name} room={room} x={8 + c * (ROOM_W + 8)} y={8 + r * (ROOM_H + HALL)} onHover={onHover} onLeave={onLeave} />;
+        const rx = 8 + c * (ROOM_W + 8), ry = 8 + r * (ROOM_H + HALL);
+        if (room.name === BIG_ROOM) return <ClaudeOffice key={room.name} x={rx} y={ry} inside={room} onEnter={onEnter} onClaude={onClaude} />;
+        return <Room key={room.name} room={room} x={rx} y={ry} onHover={onHover} onLeave={onLeave} />;
       })}
       {rows > 1 && <ClaudePatrol x={14} y={8 + ROOM_H + 6} w={W - 28} onClick={onClaude} />}
     </svg>
@@ -847,14 +930,18 @@ function Map({ rooms: real, cols, onHover, onLeave, onClaude }: { rooms: PixelRo
 }
 
 const CLAUDE_TEXT = "我是 Claude，正在各部门巡视：谁在岗、谁卡住了，这里都看得到。\n这里只看反馈；要给哪位同事交代事情，到 Claude 里跟我说。";
+const WELCOME_BIG = "这里是市场部。鼠标放在同事身上看他的定时任务和在干什么，点左上角「回办公室」出去。";
 const WELCOME = "欢迎来到 WWFS办公室！鼠标放在同事身上看他的定时任务和在干什么，头上有「!」就是卡住了。点一下看详细反馈。";
 
 export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
   const [who, setWho] = useState<PixelPerson | null>(null);
   const [claude, setClaude] = useState(false);
+  // 进出市场部：先 0.5 秒渐黑，换画面，再 0.5 秒渐显
+  const [view, setView] = useState<"map" | "big">("map");
+  const [dark, setDark] = useState(false);
   const full = useMemo(() => {
     if (!who && claude) return CLAUDE_TEXT;
-    if (!who) return WELCOME;
+    if (!who) return view === "big" ? WELCOME_BIG : WELCOME;
     if (who.seat) return `${who.name}：${who.title}。这个位子还空着，宣发移交的客户先放在看板「移交销售」。`;
     const lines = [`${who.name}（${who.title}${who.tags ? " · " + who.tags.replace(/,/g, "/") : ""}）· ${who.statusLabel}`];
     // 2026-11-03 Wallace：「感叹号证明卡住了，鼠标滑到这个人身上的时候，显示这个人的定时任务和周期」
@@ -864,7 +951,7 @@ export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
     lines.push(who.task ? `正在：${who.task}` : "手上没事。");
     if (who.unread) lines.push(`你有 ${who.unread} 条留言他还没看。`);
     return lines.join("\n");
-  }, [who, claude]);
+  }, [who, claude, view]);
   const [shown, setShown] = useState("");
   useEffect(() => {
     setShown("");
@@ -878,13 +965,41 @@ export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
   }, [full]);
 
   const leave = () => setWho(null);
+  const go = (to: "map" | "big") => {
+    if (dark) return;
+    setDark(true);
+    setWho(null);
+    setTimeout(() => {
+      setView(to);
+      requestAnimationFrame(() => setDark(false));
+    }, 550);
+  };
+  const big = rooms.find((r) => r.name === BIG_ROOM);
   return (
-    <div className="px-office rounded-2xl overflow-hidden border-4 border-[#3a2a20] shadow-xl bg-[#7a5a3f]">
-      <div className="hidden md:block">
-        <Map rooms={rooms} cols={3} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} />
-      </div>
-      <div className="md:hidden">
-        <Map rooms={rooms} cols={2} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} />
+    <div className="px-office relative rounded-2xl overflow-hidden border-4 border-[#3a2a20] shadow-xl bg-[#7a5a3f]">
+      <div className="relative">
+        {view === "big" && big ? (
+          <>
+            <BigRoom room={big} onHover={setWho} onLeave={leave} />
+            <button
+              type="button"
+              onClick={() => go("map")}
+              className="px-font absolute left-3 top-3 rounded border-2 border-[#2a1e1a] bg-[#ffdf3d] px-3 py-1 text-sm text-[#2a1e1a] shadow hover:brightness-105"
+            >
+              ◀ 回办公室
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="hidden md:block">
+              <Map rooms={rooms} cols={3} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} onEnter={() => go("big")} />
+            </div>
+            <div className="md:hidden">
+              <Map rooms={rooms} cols={2} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} onEnter={() => go("big")} />
+            </div>
+          </>
+        )}
+        <div className={"pointer-events-none absolute inset-0 bg-black transition-opacity duration-500 " + (dark ? "opacity-100" : "opacity-0")} />
       </div>
       {/* GBA 式对话框 */}
       <div className="bg-[#3a2a20] p-2">

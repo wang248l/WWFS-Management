@@ -12,7 +12,7 @@ import { getJson } from "./team";
  * 「巡检」fail 进工作日志，这里照常读到，显示在 Chase 头上。
  */
 export type AiEntry = { id: string; ts: string; source: string; status: string; task: string; ip: string; platform: string; video: string; msg: string; where: string | null; why: string | null; fix: string | null };
-export type AiAgentState = { lastAt: string | null; lastMsg: string | null; lastStatus: string | null; stuck: AiEntry[]; count24h: number; fail24h: number; findings?: AiEntry[] };
+export type AiAgentState = { lastAt: string | null; lastMsg: string | null; lastStatus: string | null; stuck: AiEntry[]; count24h: number; fail24h: number; findings?: AiEntry[]; entries: AiEntry[] };
 
 const CHASE_TASKS = new Set(["剪辑", "QC", "发布", "定时", "登录检查", "Drive上传", "巡检", "工单"]);
 
@@ -37,19 +37,22 @@ export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string
     // 检查员 Ivy（2026-11-05）：ivy.py（第三方看公开页）和 backtrace.py（倒推）每跑一次记一条「其他 ok」= 她的打卡；她记的「巡检 fail」= 查出的问题，
     // 断点照常算在负责的人（Chase）头上，这里另存一份给她的工位看
     // MAC（2026-11-05「MAC 设备要单独成为一个角色」）：日志全是这台 Mac 写的，最新一条就是它最后一次活着的时间
-    const mac = (byAgent.macmini ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0 });
+    const mac = (byAgent.macmini ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0, entries: [] });
     if (!mac.lastAt) Object.assign(mac, { lastAt: e.ts, lastMsg: e.msg, lastStatus: "ok" });
     if (Date.parse(e.ts) >= day) mac.count24h++;
+    if (mac.entries.length < 150) mac.entries.push(e);
     if (e.source.includes("backtrace") || e.source.includes("ivy")) {
-      const iv = (byAgent.inspector ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0, findings: [] });
+      const iv = (byAgent.inspector ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0, findings: [], entries: [] });
       if (e.task === "其他" && !iv.lastAt) Object.assign(iv, { lastAt: e.ts, lastMsg: e.msg, lastStatus: "ok" });
       if (e.status === "fail" && Date.parse(e.ts) >= day) iv.findings!.push(e);
+      if (iv.entries.length < 150) iv.entries.push(e);
     }
     // entries come newest first
     const who = agentForEntry(e);
     if (!who) continue;
-    const s = (byAgent[who] ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0 });
+    const s = (byAgent[who] ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0, entries: [] });
     if (!s.lastAt) Object.assign(s, { lastAt: e.ts, lastMsg: e.msg, lastStatus: e.status });
+    if (s.entries.length < 150) s.entries.push(e);
     const t = Date.parse(e.ts);
     if (t >= day) {
       s.count24h++;

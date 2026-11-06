@@ -35,7 +35,9 @@ export default async function Desk({ params }: { params: { key: string } }) {
   const needs = a.messages
     .filter((m) => m.fromRole === "agent" && (m.kind === "blocker" || m.kind === "meeting") && !m.resolvedAt)
     .map((m) => ({ ...m, agent: { key: a.key, name: a.name, avatar: a.avatar } }));
-  const ai = (await loadAiLog()).byAgent[a.key];
+  const aiAll = await loadAiLog();
+  const ai = aiAll.byAgent[a.key];
+  const aiConnected = aiAll.ok;
   const aiStuck = ai?.stuck || [];
   const aiLast = ai?.lastAt ? { status: ai.lastStatus === "fail" ? "error" : "ok", createdAt: new Date(ai.lastAt), finishedAt: new Date(ai.lastAt) } : null;
   const runForStatus = aiLast && (!a.runs[0] || aiLast.createdAt > (a.runs[0].finishedAt || a.runs[0].createdAt)) ? aiLast : a.runs[0];
@@ -95,15 +97,17 @@ export default async function Desk({ params }: { params: { key: string } }) {
 
       {ai?.findings && (
         <section className="rise card p-4">
-          <h2 className="font-semibold">🔍 Ivy 最近 24 小时查出的问题（{ai.findings.length}）</h2>
+          <h2 className="font-semibold">🔍 Ivy 每日巡检 · 最近 24 小时查出的问题（{ai.findings.length}）</h2>
+          <p className="text-sm font-medium mt-1">{ai.lastMsg || "还没巡检过"}</p>
           <p className="text-xs text-stone-500 mt-0.5">
-            不信台账，不登录去公开页看到底发没发出去（YouTube、小红书）；再从结果倒推卡在哪一环。上次检查：{ai.lastMsg || "—"}
+            📱 手机连接 · 🔑 账号登录 · 🚫 封号限流 · ⏱ 发布节奏 · 👀 公开页（不登录去看到底发没发出去，目前能看 YouTube 和小红书）
           </p>
           {!ai.findings.length && <p className="text-sm text-emerald-700 mt-2">✅ 没有问题。</p>}
           <ul className="mt-2 space-y-2 text-sm">
-            {ai.findings.map((e) => (
+            {[...ai.findings].sort((x, y) => (x.video || "").localeCompare(y.video || "")).map((e) => (
               <li key={e.id} className="rounded-lg bg-red-50 px-3 py-2">
                 <div className="flex gap-2 text-xs text-stone-500">
+                  {e.video?.startsWith("Ivy清单·") && <span className="badge bg-white text-stone-700">{e.video.slice(6)}</span>}
                   {e.ip !== "-" && <span>{e.ip}</span>}
                   {e.platform !== "-" && <span>{e.platform}</span>}
                   <span className="ml-auto">{when(new Date(e.ts))}</span>
@@ -233,6 +237,57 @@ export default async function Desk({ params }: { params: { key: string } }) {
         </section>
       </div>
 
+
+
+      {/* 工作日志（2026-11-05 Wallace：「所有的员工个人界面要有日志，员工做了什么要详细的反馈在里面，这样哪步骤卡住都知道」） */}
+      <section className="card p-4">
+        <div className="flex items-baseline justify-between flex-wrap gap-2">
+          <h2 className="font-semibold">📜 {a.name} 的工作日志 · 近 48 小时</h2>
+          {ai && (
+            <span className="text-xs text-stone-500">
+              最近 {ai.entries.length} 条 · 失败 {ai.entries.filter((e) => e.status === "fail").length} · 来自 AI 工作日志
+            </span>
+          )}
+        </div>
+        {!ai?.entries.length ? (
+          <p className="text-sm text-stone-500 mt-2">
+            {aiConnected
+              ? `还没有 ${a.name} 的工作日志：他的任务${a.host?.includes("Mac") ? "" : "不在 Mac 上跑（" + (a.host || "机器未填") + "），"}还没接进 AI 工作日志，所以这里看不到每一步。`
+              : "工作日志暂时读不到（Marketing 连接没配好）。"}
+          </p>
+        ) : (
+          <ol className="mt-3 relative border-l-2 border-stone-200 ml-2 space-y-3 max-h-[36rem] overflow-y-auto pr-2">
+            {ai.entries.map((e) => (
+              <li key={e.id} className="ml-4">
+                <span
+                  className={
+                    "absolute -left-[7px] mt-1.5 w-3 h-3 rounded-full border-2 border-white " +
+                    (e.status === "fail" ? "bg-red-500" : e.status === "run" ? "bg-blue-500" : "bg-emerald-500")
+                  }
+                />
+                <div className="flex items-center gap-2 flex-wrap text-xs text-stone-500">
+                  <span className="tabular-nums">{when(new Date(e.ts))}</span>
+                  <span className="badge bg-stone-100 text-stone-700">{e.task}</span>
+                  {e.ip !== "-" && <span>{e.ip}</span>}
+                  {e.platform !== "-" && <span>{e.platform}</span>}
+                  <span className={"badge " + (e.status === "fail" ? "bg-red-50 text-red-700" : e.status === "run" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700")}>
+                    {e.status === "fail" ? "失败" : e.status === "run" ? "进行中" : "完成"}
+                  </span>
+                </div>
+                <div className={"text-sm mt-0.5 " + (e.status === "fail" ? "text-red-900 font-medium" : "")}>{e.msg}</div>
+                {e.video && !e.msg.includes(e.video) && <div className="text-xs text-stone-500">📹 {e.video}</div>}
+                {(e.where || e.why || e.fix) && (
+                  <div className="text-xs text-stone-600 mt-1 rounded-md bg-stone-50 px-2 py-1 space-y-0.5">
+                    {e.where && <div>哪里：{e.where}</div>}
+                    {e.why && !e.why.startsWith("未说明") && <div>原因：{e.why}</div>}
+                    {e.fix && <div>处理：{e.fix}</div>}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       <section className="card p-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
