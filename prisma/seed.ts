@@ -291,6 +291,8 @@ async function main() {
     });
     await prisma.setting.create({ data: { key: "migration:mark-numbering-20261106", value: new Date().toISOString() } });
   }
+  // 2026-11-06 Ben、Ishan 过不了实习期，不再算员工：名单里停用（不删，Drive 和账号都不动）
+  await prisma.staff.updateMany({ where: { name: { in: ["Ben", "Ishan"] } }, data: { active: false } });
   const ROLES_MARK = "migration:roles-20261106";
   if (!(await prisma.setting.findUnique({ where: { key: ROLES_MARK } }))) {
     const roles: Record<string, Record<string, unknown>> = {

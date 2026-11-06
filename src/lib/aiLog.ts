@@ -60,6 +60,8 @@ export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string
   const byAgent: Record<string, AiAgentState> = {};
   const latestByKey: Record<string, Record<string, AiEntry>> = {};
   const day = Date.now() - 86400_000;
+  // 2026-11-06：「Ben 和 Ishan 先删掉吧，过不了实习期也不算是我们的员工」——他们的记录不再算到任何人头上
+  r.data.entries = r.data.entries.filter((e) => !["Ben", "Ishan"].includes((e.ip || "").split(" ")[0]));
   for (const e of r.data.entries) {
     // 检查员 Ivy（2026-11-05）：ivy.py（第三方看公开页）和 backtrace.py（倒推）每跑一次记一条「其他 ok」= 她的打卡；她记的「巡检 fail」= 查出的问题，
     // 断点照常算在负责的人（Chase）头上，这里另存一份给她的工位看
