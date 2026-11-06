@@ -1,4 +1,5 @@
 import { getJson } from "./team";
+import { setting } from "./settings";
 
 /**
  * 「你怎么知道谁卡住了」（2026-11-05 Wallace）：Mac 上每件事都记进 AI 工作日志（ok 绿 / fail 红，带 哪里/原因/怎么处理），
@@ -25,16 +26,37 @@ export function agentForEntry(e: AiEntry): string | null {
   const tag = `${e.source} ${e.video}`.toLowerCase();
   if (/(^|\W)mark[:\s]/.test(tag) || tag.includes("mark.duty") || e.task === "报告") return "mark";
   if (tag.includes("增员")) return "recruit";
+  // 2026-11-06 分工：剪辑 / QC 归 Leo，发布 / 定时 / 登录 / 上传 / 巡检 归 Chase（key mac）
+  if (e.task === "剪辑" || e.task === "QC") return "leo";
+  if (v.startsWith("leo:")) return "leo";
   if (CHASE_TASKS.has(e.task)) return "mac";
   return null;
 }
 
-export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string, AiAgentState> }> {
-  const base = process.env.MARKETING_API_BASE;
-  const key = process.env.MARKETING_API_KEY;
-  if (!base || !key) return { ok: false, byAgent: {} };
+/**
+ * 「一定需要人工介入的在页面里面显示出来」（2026-11-06 Wallace）：Ivy 每次巡检把要你亲自处理的问题记成「【需要你】…」，
+ * 这里只取她最近一次巡检那一批（同一次跑 15 分钟内记的），已经好了的下次巡检就不会再出现。
+ */
+export function humanTodos(entries: AiEntry[]): AiEntry[] {
+  const lastRun = entries.find((e) => e.source.includes("ivy") && e.task === "其他");
+  if (!lastRun) return [];
+  const t0 = Date.parse(lastRun.ts) - 15 * 60_000;
+  const seen = new Set<string>();
+  return entries.filter((e) => {
+    if (!e.msg.startsWith("【需要你】") || Date.parse(e.ts) < t0 || Date.parse(e.ts) > Date.parse(lastRun.ts) + 60_000) return false;
+    const k = e.msg;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string, AiAgentState>; human: AiEntry[] }> {
+  const base = process.env.MARKETING_API_BASE || "https://marketing.wallacewang.ca";
+  const key = await setting("MARKETING_API_KEY");
+  if (!base || !key) return { ok: false, byAgent: {}, human: [] };
   const r = await getJson<{ entries: AiEntry[] }>(`${base.replace(/\/$/, "")}/api/agent/ai-log?hours=48&limit=2000`, { authorization: `Bearer ${key}` });
-  if (!r.ok) return { ok: false, byAgent: {} };
+  if (!r.ok) return { ok: false, byAgent: {}, human: [] };
   const byAgent: Record<string, AiAgentState> = {};
   const latestByKey: Record<string, Record<string, AiEntry>> = {};
   const day = Date.now() - 86400_000;
@@ -72,7 +94,7 @@ export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string
     byAgent[who].stuck = Object.values(m).filter((e) => e.status === "fail" && Date.parse(e.ts) >= day);
   }
 
-  return { ok: true, byAgent };
+  return { ok: true, byAgent, human: humanTodos(r.data.entries) };
 }
 
 /** 悬停用的一句话：事情 + 卡在哪（原因太长就不放，点进工位看全文）。 */
