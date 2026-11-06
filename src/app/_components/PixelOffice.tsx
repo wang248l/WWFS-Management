@@ -549,6 +549,8 @@ function Pantry({ x, y }: { x: number; y: number }) {
 const ROOM_FLOOR: Record<string, [string, string]> = {
   社媒运营部: ["#d7e8f7", "#c9def2"],
   市场部: ["#8fd16a", "#82c75e"], // 草地
+  "剪辑 · 检查区": ["#8fd16a", "#82c75e"],
+  社媒运营区: ["#d7e8f7", "#c9def2"],
   增员部: ["#d4f0ea", "#c3e8e0"],
   内容部: ["#e6dcf5", "#dacdf0"],
   出镜顾问: ["#f8dce8", "#f2cddd"],
@@ -566,7 +568,7 @@ const HALL = 2 * TILE;
 function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
   const router = useRouter();
   const [f1, f2] = ROOM_FLOOR[room.name] || ["#ece6dc", "#e2dacd"];
-  const farm = room.name === "市场部" || room.name === "推广区";
+  const farm = room.name === "市场部" || room.name === "剪辑 · 检查区";
   const studio = room.name === "社媒运营部" || room.name === "社媒运营区";
   const macDev = room.people.find((p) => p.device);
   const tiles: JSX.Element[] = [];
@@ -924,23 +926,158 @@ function ClaudeOffice({ x, y, inside, onEnter, onClaude }: { x: number; y: numbe
  * 进门后的市场部大办公室（2026-11-06 起社媒运营并进市场部）：两间打通——左边拍摄工作室（Mark、Chase、MAC），
  * 右边农场（Leo、Ivy 等），中间墙上开门，顶上一块大招牌。左上角回去。
  */
-const STUDIO_KEYS = new Set(["mark", "mac", "macmini"]);
+const STUDIO_KEYS = new Set(["mark", "mac", "macmini"]);  // 左：策划 Mark + 发布 Chase + MAC；右：剪辑 Leo + 检查 Ivy
+
+// ---- 市场部流水线（2026-11-06 Wallace：「做一个流水线的动画吧，每个人的职责都以动画形式呈现」）----
+// 一条传送带：Mark 写稿 → IP 拍摄 → Drive → Leo 剪辑 → Chase 发布 → Ivy 检查。一件「货」沿着传送带走，
+// 每到一站变个样子（稿纸 → 胶片 → 云文件 → 成片 → 手机 → ✓）。哪一站的人头上冒「!」，货就停在那一站闪红。
+type Station = { key: string; label: string; who?: string };
+const STATIONS: Station[] = [
+  { key: "script", label: "Mark 写稿", who: "mark" },
+  { key: "shoot", label: "IP 拍摄" },
+  { key: "drive", label: "传 Drive" },
+  { key: "edit", label: "Leo 剪辑", who: "leo" },
+  { key: "post", label: "Chase 发布", who: "mac" },
+  { key: "check", label: "Ivy 检查", who: "inspector" },
+];
+
+function Cargo({ stage, x, y }: { stage: number; x: number; y: number }) {
+  // 6 个样子，都画在 16×14 的格子里
+  switch (stage) {
+    case 0: // 稿纸
+      return (
+        <g>
+          <rect x={x} y={y} width={12} height={14} fill="#fffdf4" stroke="#2a1e1a" strokeWidth={1} />
+          {[3, 6, 9].map((d) => <rect key={d} x={x + 2} y={y + d} width={8} height={1} fill="#8a8a99" />)}
+        </g>
+      );
+    case 1: // 胶片（原片）
+      return (
+        <g>
+          <rect x={x - 1} y={y + 2} width={16} height={10} fill="#2d2d3a" />
+          {[0, 4, 8, 12].map((d) => <rect key={d} x={x + d} y={y + 3} width={2} height={2} fill="#fffdf4" />)}
+          {[0, 4, 8, 12].map((d) => <rect key={"b" + d} x={x + d} y={y + 9} width={2} height={2} fill="#fffdf4" />)}
+        </g>
+      );
+    case 2: // 云文件
+      return (
+        <g fill="#8fd0ff" stroke="#3a6fa8" strokeWidth={1}>
+          <rect x={x} y={y + 5} width={16} height={8} rx={4} />
+          <rect x={x + 4} y={y + 1} width={8} height={8} rx={4} />
+        </g>
+      );
+    case 3: // 剪好的成片
+      return (
+        <g>
+          <rect x={x} y={y + 1} width={16} height={12} fill="#d4704f" stroke="#2a1e1a" strokeWidth={1} />
+          <path d={`M${x + 6} ${y + 4}l5 3l-5 3z`} fill="#fffdf4" />
+        </g>
+      );
+    case 4: // 发出去的手机
+      return (
+        <g>
+          <rect x={x + 3} y={y} width={10} height={14} rx={1} fill="#1f1f28" />
+          <rect x={x + 4} y={y + 1} width={8} height={11} fill="#7fc3ff" />
+          <rect x={x + 6} y={y + 5} width={4} height={3} fill="#e5383b" />
+        </g>
+      );
+    default: // 检查通过
+      return (
+        <g>
+          <rect x={x} y={y} width={14} height={14} fill="#2f9e57" stroke="#1f5e33" strokeWidth={1} />
+          <path d={`M${x + 3} ${y + 7}l3 3l5 -6`} stroke="#fff" strokeWidth={2} fill="none" />
+        </g>
+      );
+  }
+}
+
+function Conveyor({ x, y, w, people }: { x: number; y: number; w: number; people: PixelPerson[] }) {
+  const n = STATIONS.length;
+  const gap = (w - 40) / (n - 1);
+  const sx = (i: number) => x + 20 + i * gap;
+  const mood = (who?: string) => people.find((p) => p.key === who)?.mood;
+  const stuck = STATIONS.findIndex((st) => st.who && mood(st.who) === "alert");
+  // 动画：每站停 1.2 秒、走 0.8 秒，一圈 12 秒
+  const T = 12;
+  const seg = T / n;
+  const times: number[] = [];
+  const xs: number[] = [];
+  for (let i = 0; i < n; i++) {
+    times.push((i * seg) / T, (i * seg + seg * 0.6) / T);
+    xs.push(sx(i) - 8, sx(i) - 8);
+  }
+  times.push(1);
+  xs.push(sx(0) - 8);
+  return (
+    <g>
+      {/* 传送带 */}
+      <rect x={x} y={y + 22} width={w} height={10} fill="#55555f" />
+      <rect x={x} y={y + 22} width={w} height={2} fill="#7a7a86" />
+      <g className="px-belt">
+        {[...Array(Math.ceil(w / 12))].map((_, i) => <rect key={i} x={x + i * 12} y={y + 26} width={6} height={2} fill="#3d3d4a" />)}
+      </g>
+      {/* 站点 */}
+      {STATIONS.map((st, i) => {
+        const bad = st.who && mood(st.who) === "alert";
+        return (
+          <g key={st.key}>
+            <rect x={sx(i) - 26} y={y + 36} width={52} height={13} fill={bad ? "#e5383b" : "#3a2a20"} />
+            <rect x={sx(i) - 25} y={y + 37} width={50} height={11} fill={bad ? "#ffe3e3" : "#fff8e7"} />
+            <text x={sx(i)} y={y + 45.5} textAnchor="middle" fontSize={7} fill="#2a1e1a" className="px-font" fontWeight={700}>
+              {st.label}
+            </text>
+            {i < n - 1 && <path d={`M${sx(i) + 28} ${y + 42}h${gap - 56}`} stroke="#c9a06a" strokeWidth={1.5} strokeDasharray="2 2" />}
+          </g>
+        );
+      })}
+      {/* 货 */}
+      {stuck >= 0 ? (
+        <g>
+          <g className="px-bang">
+            <Cargo stage={stuck} x={sx(stuck) - 8} y={y + 10} />
+          </g>
+          <rect x={sx(stuck) + 8} y={y - 6} width={10} height={13} fill="#fff" stroke="#2a1e1a" strokeWidth={1.5} />
+          <rect x={sx(stuck) + 12} y={y - 4} width={2} height={6} fill="#e5383b" />
+          <rect x={sx(stuck) + 12} y={y + 4} width={2} height={2} fill="#e5383b" />
+        </g>
+      ) : (
+        <g>
+          <animateTransform attributeName="transform" type="translate" dur={`${T}s`} repeatCount="indefinite"
+            keyTimes={times.join(";")} values={xs.map((v) => `${v - (sx(0) - 8)} 0`).join(";")} />
+          {STATIONS.map((_, i) => (
+            <g key={i} opacity={i === 0 ? 1 : 0}>
+              <animate attributeName="opacity" dur={`${T}s`} repeatCount="indefinite" calcMode="discrete"
+                {...(i === 0
+                  ? { keyTimes: `0;${(seg / T).toFixed(4)};1`, values: "1;0;0" }
+                  : i === n - 1
+                    ? { keyTimes: `0;${((i * seg) / T).toFixed(4)};1`, values: "0;1;1" }
+                    : { keyTimes: `0;${((i * seg) / T).toFixed(4)};${(((i + 1) * seg) / T).toFixed(4)};1`, values: "0;1;0;0" })} />
+              <Cargo stage={i} x={sx(0) - 8} y={y + 10} />
+            </g>
+          ))}
+        </g>
+      )}
+    </g>
+  );
+}
+
 function BigRoom({ room, onHover, onLeave }: { room: PixelRoom; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
   const studio: PixelRoom = { name: "社媒运营区", people: room.people.filter((p) => STUDIO_KEYS.has(p.key)) };
-  const farm: PixelRoom = { name: "推广区", people: room.people.filter((p) => !STUDIO_KEYS.has(p.key)) };
+  const farm: PixelRoom = { name: "剪辑 · 检查区", people: room.people.filter((p) => !STUDIO_KEYS.has(p.key)) };
   const W = ROOM_W * 2 + 16;
   return (
-    <svg viewBox={`0 0 ${W} ${ROOM_H + 30}`} className="w-full h-auto block" shapeRendering="crispEdges" role="img" aria-label="市场部办公室">
-      <rect width={W} height={ROOM_H + 30} fill="#7a5a3f" />
-      <rect x={W / 2 - 70} y={3} width={140} height={18} fill="#3a2a20" />
-      <rect x={W / 2 - 68} y={5} width={136} height={14} fill="#fff8e7" />
+    <svg viewBox={`0 0 ${W} ${ROOM_H + 90}`} className="w-full h-auto block" shapeRendering="crispEdges" role="img" aria-label="市场部办公室">
+      <rect width={W} height={ROOM_H + 90} fill="#7a5a3f" />
+      <rect x={W / 2 - 110} y={3} width={220} height={18} fill="#3a2a20" />
+      <rect x={W / 2 - 108} y={5} width={216} height={14} fill="#fff8e7" />
       <text x={W / 2} y={15.5} textAnchor="middle" fontSize={10} fill="#3a2a20" className="px-font" fontWeight={700}>
-        市场部 · 社媒运营 + 推广
+        市场部 · 策划 → 剪辑 → 发布 → 检查
       </text>
       <Room room={studio} x={8} y={24} onHover={onHover} onLeave={onLeave} />
       <Room room={farm} x={8 + ROOM_W} y={24} onHover={onHover} onLeave={onLeave} />
       {/* 两间打通：中间墙上开一个门洞 */}
       <rect x={8 + ROOM_W - 3} y={24 + 4 * TILE} width={6} height={3 * TILE} fill="#cdb79a" />
+      <Conveyor x={8} y={24 + ROOM_H + 6} w={W - 16} people={room.people} />
     </svg>
   );
 }

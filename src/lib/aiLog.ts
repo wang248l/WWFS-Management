@@ -26,6 +26,9 @@ export function agentForEntry(e: AiEntry): string | null {
   const tag = `${e.source} ${e.video}`.toLowerCase();
   if (/(^|\W)mark[:\s]/.test(tag) || tag.includes("mark.duty") || e.task === "报告") return "mark";
   if (tag.includes("增员")) return "recruit";
+  // 2026-11-06 分工：剪辑 / QC 归 Leo，发布 / 定时 / 登录 / 上传 / 巡检 归 Chase（key mac）
+  if (e.task === "剪辑" || e.task === "QC") return "leo";
+  if (v.startsWith("leo:")) return "leo";
   if (CHASE_TASKS.has(e.task)) return "mac";
   return null;
 }

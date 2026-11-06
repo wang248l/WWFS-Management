@@ -279,6 +279,18 @@ async function main() {
   }
   // 2026-11-06 社媒运营部并进市场部：老库里还挂在社媒运营部的人一起搬过去
   await prisma.agent.updateMany({ where: { department: "社媒运营部" }, data: { department: "市场部" } });
+  // 2026-11-06 Wallace：「Mark 是策划/文案，Leo 是剪辑，Chase 是发布，Ivy 是检查」——一次性改到位（Setting 里记一笔，之后在名单页改的不覆盖）
+  const ROLES_MARK = "migration:roles-20261106";
+  if (!(await prisma.setting.findUnique({ where: { key: ROLES_MARK } }))) {
+    const roles: Record<string, Record<string, unknown>> = {
+      mark: { title: "策划 / 文案", tags: "选题,出稿,文案,数据分析", duty: "策划和文案：选题、写口播稿和标题文案、看数据定方向；Marketing 网站值班", skills: "wwfs-agent-socialops,wwfs-ops-daily,wwfs-daily-editor,wwfs-scriptgen-ip,wwfs-scriptgen-marketing" },
+      leo: { title: "剪辑", tags: "剪辑,质检,封面", duty: "口播剪辑：原画质 60fps、去 NG、字幕、封面，过 QC 才交给 Chase 发", host: "Mac mini", schedule: "每天 06:47 自动剪辑 · 新原片 5 分钟内开剪", everyHours: 24, workspaceUrl: "https://claude.ai/artifact/WydxxqTJb67qRmB3dLj2mn", workspaceName: "视频进度看板", skills: "wwfs-edit-koubo,wwfs-covergen-finance,wwfs-covergen-lifestyle" },
+      mac: { title: "发布", tags: "发布,定时,登录", duty: "各平台发布：手机 + 网页定时发布、封面、去背景音乐、发完截图留证", schedule: "每小时发布", workspaceUrl: "https://marketing.wallacewang.ca/dist-board", workspaceName: "AI 分发看板", skills: "wwfs-publish-shortvideo" },
+      inspector: { title: "检查", tags: "链路,手机,登录,封号,违规,画质,发布间隔,公开页" },
+    };
+    for (const [key, data] of Object.entries(roles)) await prisma.agent.updateMany({ where: { key }, data });
+    await prisma.setting.create({ data: { key: ROLES_MARK, value: new Date().toISOString() } });
+  }
   for (const n of ["Amelia", "Ishan"]) {
     await prisma.staff.updateMany({
       where: { name: n, department: null },
