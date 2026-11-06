@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadAiLog } from "@/lib/aiLog";
+import { setting } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function GET() {
   const per = Object.fromEntries(Object.entries(ai.byAgent).map(([k, v]) => [k, { entries: v.entries.length, lastAt: v.lastAt }]));
   return NextResponse.json({
     ok: true,
-    marketingKey: !!process.env.MARKETING_API_KEY,
+    marketingKey: !!(await setting("MARKETING_API_KEY")),
     aiLog: ai.ok,
     agents: per,
   });

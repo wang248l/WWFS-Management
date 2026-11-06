@@ -1,4 +1,5 @@
 import { getJson } from "./team";
+import { setting } from "./settings";
 
 /**
  * 「你怎么知道谁卡住了」（2026-11-05 Wallace）：Mac 上每件事都记进 AI 工作日志（ok 绿 / fail 红，带 哪里/原因/怎么处理），
@@ -30,8 +31,8 @@ export function agentForEntry(e: AiEntry): string | null {
 }
 
 export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string, AiAgentState> }> {
-  const base = process.env.MARKETING_API_BASE;
-  const key = process.env.MARKETING_API_KEY;
+  const base = process.env.MARKETING_API_BASE || "https://marketing.wallacewang.ca";
+  const key = await setting("MARKETING_API_KEY");
   if (!base || !key) return { ok: false, byAgent: {} };
   const r = await getJson<{ entries: AiEntry[] }>(`${base.replace(/\/$/, "")}/api/agent/ai-log?hours=48&limit=2000`, { authorization: `Bearer ${key}` });
   if (!r.ok) return { ok: false, byAgent: {} };

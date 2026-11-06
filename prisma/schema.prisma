@@ -204,3 +204,11 @@ model PromoDaily {
 
   @@unique([agentKey, date])
 }
+
+// 网站设置（2026-11-06：办公室读 AI 工作日志要一把 Marketing 只读钥匙，服务器 .env 里没配；
+// 老板在 /settings 页面贴一次就行，存这里，环境变量优先）。
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

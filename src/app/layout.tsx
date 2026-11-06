@@ -22,6 +22,7 @@ const NAV = [
   { href: "/kpi", label: "月度经营总览" },
   { href: "/data", label: "数据录入" },
   { href: "/team", label: "人员与 Agent 名单" },
+  { href: "/settings", label: "设置" },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
