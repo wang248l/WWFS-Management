@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { loadAiLog } from "@/lib/aiLog";
 import KeyForm from "./KeyForm";
+import AgentKeys from "./AgentKeys";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +10,22 @@ export default async function SettingsPage() {
   const row = await db.setting.findUnique({ where: { key: "MARKETING_API_KEY" } }).catch(() => null);
   const fromEnv = !!process.env.MARKETING_API_KEY;
   const ai = await loadAiLog();
+  const [pending, keys, agents] = await Promise.all([
+    db.pairRequest.findMany({ where: { approvedAt: null, createdAt: { gte: new Date(Date.now() - 3600_000) } }, orderBy: { createdAt: "desc" } }),
+    db.agentKey.findMany({ orderBy: { createdAt: "desc" } }),
+    db.agent.findMany({ where: { active: true }, orderBy: [{ order: "asc" }, { name: "asc" }], select: { key: true, name: true } }),
+  ]);
   const n = Object.values(ai.byAgent).reduce((k, v) => k + v.entries.length, 0);
   return (
     <div className="space-y-5 max-w-3xl">
       <h1 className="text-2xl font-semibold">⚙️ 设置</h1>
+      <AgentKeys
+        pending={pending.map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt.toISOString() }))}
+        keys={keys.map((k) => ({ id: k.id, label: k.label, prefix: k.prefix, lastUsedAt: k.lastUsedAt?.toISOString() || null, revokedAt: k.revokedAt?.toISOString() || null, createdAt: k.createdAt.toISOString() }))}
+        agents={agents}
+      />
       <section className="card p-5">
-        <h2 className="font-semibold">AI 工作日志连接</h2>
+        <h2 className="font-semibold">AI 工作日志连接（Mac 配对以后就不需要 Marketing 钥匙了）</h2>
         <p className="text-sm text-stone-600 mt-1">
           办公室里每个人的「工作日志」「卡住了」「上次运行」都是从 Marketing 网站读 Mac 的 AI 工作日志。要一把 Marketing 的<strong>只读</strong>钥匙。
         </p>

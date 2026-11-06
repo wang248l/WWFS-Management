@@ -1,5 +1,6 @@
 import { getJson } from "./team";
 import { setting } from "./settings";
+import { db } from "./db";
 
 /**
  * 「你怎么知道谁卡住了」（2026-11-05 Wallace）：Mac 上每件事都记进 AI 工作日志（ok 绿 / fail 红，带 哪里/原因/怎么处理），
@@ -52,11 +53,21 @@ export function humanTodos(entries: AiEntry[]): AiEntry[] {
 }
 
 export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string, AiAgentState>; human: AiEntry[] }> {
+  // 优先读 Mac 直接推到办公室的日志（2026-11-06 配对以后）；48 小时里一条都没有，再去 Marketing 拉
+  const local = await db.aiLogEntry
+    .findMany({ where: { ts: { gte: new Date(Date.now() - 48 * 3600_000) } }, orderBy: { ts: "desc" }, take: 2000 })
+    .catch(() => []);
+  if (local.length) return digest(local.map((e) => ({ ...e, ts: e.ts.toISOString() })));
   const base = process.env.MARKETING_API_BASE || "https://marketing.wallacewang.ca";
   const key = await setting("MARKETING_API_KEY");
   if (!base || !key) return { ok: false, byAgent: {}, human: [] };
   const r = await getJson<{ entries: AiEntry[] }>(`${base.replace(/\/$/, "")}/api/agent/ai-log?hours=48&limit=2000`, { authorization: `Bearer ${key}` });
   if (!r.ok) return { ok: false, byAgent: {}, human: [] };
+  return digest(r.data.entries);
+}
+
+function digest(all: AiEntry[]): { ok: boolean; byAgent: Record<string, AiAgentState>; human: AiEntry[] } {
+  const r = { data: { entries: all } };
   const byAgent: Record<string, AiAgentState> = {};
   const latestByKey: Record<string, Record<string, AiEntry>> = {};
   const day = Date.now() - 86400_000;

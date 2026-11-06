@@ -7,7 +7,7 @@ import { agentAuth } from "@/lib/office";
  * 每条带 kind（chat / instruction）和 taskId。不会自动标已读：用 POST /api/agents/reply 带 ack。
  */
 export async function GET(req: NextRequest) {
-  const err = agentAuth(req);
+  const err = await agentAuth(req);
   if (err) return NextResponse.json({ error: err }, { status: err === "unauthorized" ? 401 : 503 });
   const agent = await db.agent.findUnique({ where: { key: req.nextUrl.searchParams.get("agent") || "" } });
   if (!agent) return NextResponse.json({ error: "no such agent" }, { status: 404 });

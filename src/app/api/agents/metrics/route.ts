@@ -7,7 +7,7 @@ import { agentAuth, PROMO_FIELDS } from "@/lib/office";
  * { "agent": "mark", "date": "2026-11-03", "posts": 6, "impressions": 12000, "followers": 40, "dms": 12, "leads": 3, "signups": 0 }
  */
 export async function POST(req: NextRequest) {
-  const err = agentAuth(req);
+  const err = await agentAuth(req);
   if (err) return NextResponse.json({ error: err }, { status: err === "unauthorized" ? 401 : 503 });
   const b = await req.json().catch(() => null);
   const agentKey = String(b?.agent || "").trim().toLowerCase();

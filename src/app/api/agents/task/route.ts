@@ -8,7 +8,7 @@ import { agentAuth, isTaskStatus } from "@/lib/office";
  * 有 id 按 id 改；没有就按 (agent, title) 找，找不到新建。
  */
 export async function POST(req: NextRequest) {
-  const err = agentAuth(req);
+  const err = await agentAuth(req);
   if (err) return NextResponse.json({ error: err }, { status: err === "unauthorized" ? 401 : 503 });
   const b = await req.json().catch(() => null);
   const agent = await db.agent.findUnique({ where: { key: String(b?.agent || "") } });
