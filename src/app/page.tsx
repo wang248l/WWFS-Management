@@ -47,8 +47,12 @@ export default async function Lobby() {
   });
 
   // 像素办公室：每个部门一间房
+  // 拍摄提醒：Ivy 记的「mark:拍摄提醒」→ 市场部流水线停在 IP 拍摄
+  const shoot = human.filter((e) => e.video === "mark:拍摄提醒");
+  const shootStuck = shoot.length ? shoot.map((e) => e.msg.replace(/^【需要你】Ivy 拍摄：/, "").split("：")[0]).join("、") + " 没新原片" : null;
   const rooms: PixelRoom[] = departments.map((d) => ({
     name: d.name,
+    shootStuck: d.name === "市场部" ? shootStuck : null,
     people: [
       ...d.agents.map((a) => {
         const now = a.tasks.find((t) => t.status === "doing") || a.tasks.find((t) => t.status === "blocked") || a.tasks.find((t) => t.status === "todo");
