@@ -17,6 +17,11 @@ export type AiAgentState = { lastAt: string | null; lastMsg: string | null; last
 const CHASE_TASKS = new Set(["剪辑", "QC", "发布", "定时", "登录检查", "Drive上传", "巡检", "工单"]);
 
 export function agentForEntry(e: AiEntry): string | null {
+  // 每日汇报（daily_agent_report.py）和 Mark 每一步都用 video 前缀点名：chase: / mac: / mark:
+  const v = (e.video || "").toLowerCase();
+  if (v.startsWith("chase:")) return "mac";
+  if (v.startsWith("mac:")) return "macmini";
+  if (v.startsWith("mark:")) return "mark";
   const tag = `${e.source} ${e.video}`.toLowerCase();
   if (/(^|\W)mark[:\s]/.test(tag) || tag.includes("mark.duty") || e.task === "报告") return "mark";
   if (tag.includes("增员")) return "recruit";
@@ -49,7 +54,7 @@ export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string
     }
     // entries come newest first
     const who = agentForEntry(e);
-    if (!who) continue;
+    if (!who || who === "macmini") continue; // MAC 上面已经收了所有条目
     const s = (byAgent[who] ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0, entries: [] });
     if (!s.lastAt) Object.assign(s, { lastAt: e.ts, lastMsg: e.msg, lastStatus: e.status });
     if (s.entries.length < 150) s.entries.push(e);
