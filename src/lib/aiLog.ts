@@ -40,7 +40,7 @@ export function agentForEntry(e: AiEntry): string | null {
 export function humanTodos(entries: AiEntry[]): AiEntry[] {
   const lastRun = entries.find((e) => e.source.includes("ivy") && e.task === "其他");
   if (!lastRun) return [];
-  const t0 = Date.parse(lastRun.ts) - 15 * 60_000;
+  const t0 = Date.parse(lastRun.ts) - 30 * 60_000;
   const seen = new Set<string>();
   return entries.filter((e) => {
     if (!e.msg.startsWith("【需要你】") || Date.parse(e.ts) < t0 || Date.parse(e.ts) > Date.parse(lastRun.ts) + 60_000) return false;
