@@ -147,7 +147,7 @@ async function main() {
     tasks: { title: string; status: string; note?: string }[];
   }[] = [
     {
-      key: "mark", name: "Mark", department: "社媒运营部", title: "社交媒体总运营", avatar: "🧭", order: 0,
+      key: "mark", name: "Mark", department: "市场部", title: "社交媒体总运营", avatar: "🧭", order: 0,
       skills: "wwfs-agent-socialops,wwfs-ops-daily,wwfs-daily-editor,wwfs-scriptgen-ip,wwfs-scriptgen-marketing",
       tags: "策划,出稿,分配,数据分析",
       workspaceUrl: "https://marketing.wallacewang.ca", workspaceName: "Marketing 网站",
@@ -189,7 +189,7 @@ async function main() {
     },
     {
       // 打卡 key 仍是 mac（Mac 上的脚本都用这个），名字 2026-11-03 起叫 Chase
-      key: "mac", name: "Chase", department: "社媒运营部", title: "剪辑 & 发布", avatar: "🎬", order: 1,
+      key: "mac", name: "Chase", department: "市场部", title: "剪辑 & 发布", avatar: "🎬", order: 1,
       skills: "wwfs-edit-koubo,wwfs-publish-shortvideo,wwfs-covergen-finance,wwfs-covergen-lifestyle",
       tags: "剪辑,发布",
       workspaceUrl: "https://claude.ai/artifact/WydxxqTJb67qRmB3dLj2mn", workspaceName: "视频进度看板",
@@ -203,7 +203,7 @@ async function main() {
     },
     {
       // 2026-11-05 Wallace：「MAC 设备要单独成为一个角色」——Mark 和 Chase 共用的 Mac mini 本身
-      key: "macmini", name: "MAC", department: "社媒运营部", title: "Mac mini · Mark 和 Chase 共用的电脑", avatar: "🖥️", order: 1,
+      key: "macmini", name: "MAC", department: "市场部", title: "Mac mini · Mark 和 Chase 共用的电脑", avatar: "🖥️", order: 1,
       tags: "剪辑机,发布机,定时任务",
       duty: "跑所有定时任务：剪辑、质检、手机发布、登录巡检、日报；AI 工作日志 2 小时没有新记录 = 它可能停了",
       host: "Mac mini", schedule: "24 小时在线", everyHours: 1, graceHours: 1,
@@ -277,6 +277,8 @@ async function main() {
       await prisma.agentTask.createMany({ data: tasks.map((t, i) => ({ ...t, agentId: agent!.id, order: i })) });
     }
   }
+  // 2026-11-06 社媒运营部并进市场部：老库里还挂在社媒运营部的人一起搬过去
+  await prisma.agent.updateMany({ where: { department: "社媒运营部" }, data: { department: "市场部" } });
   for (const n of ["Amelia", "Ishan"]) {
     await prisma.staff.updateMany({
       where: { name: n, department: null },
