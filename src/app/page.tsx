@@ -58,6 +58,10 @@ export default async function Lobby() {
     shootStuck: d.name === "市场部" ? shootStuck : null,
     driveStuck: d.name === "市场部" ? driveStuck : null,
     people: [
+      // 2026-11-09 Wallace：「我的办公室有我和 Amelia，Amelia 是我的助理」
+      ...(d.name === "老板办公室"
+        ? [{ key: "wallace", name: "Wallace", title: "老板", tags: null, href: "/", mood: "work" as const, statusLabel: "在办公室", task: "看大家的反馈", unread: 0 }]
+        : []),
       ...d.agents.map((a) => {
         const now = a.tasks.find((t) => t.status === "doing") || a.tasks.find((t) => t.status === "blocked") || a.tasks.find((t) => t.status === "todo");
         const mood = moodFor(a.needs ? "error" : a.status, a.happy);

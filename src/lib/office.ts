@@ -12,9 +12,9 @@ import { agentKeyOk } from "./agentKeys";
 // 办公室里现在开着的部门（2026-11-03 Wallace：「我们现在只有社媒运营……顾问两个人，市场部的 Leo，
 // 销售部加入销售经理 Bob，内容部改成会计 Tina」）。不在这里的部门（增员部、内容部）的人只在名单页和仪表盘里。
 // 2026-11-06 Wallace：「市场部应该和社媒运营是一起的，不是分开的两个部门」——社媒运营并进市场部（Mark、Chase、MAC、Leo、Ivy）
-export const OFFICE_DEPTS = ["市场部", "出镜顾问", "销售部", "财务部"];
+export const OFFICE_DEPTS = ["市场部", "老板办公室", "销售部", "财务部"];
 export const DEPT_ORDER = OFFICE_DEPTS;
-export const DEPT_ICON: Record<string, string> = { 社媒运营部: "📱", 运营部: "🧭", 市场部: "📣", 增员部: "🤝", 内容部: "🎬", 出镜顾问: "🎙️", 销售部: "💼", 财务部: "🧮" };
+export const DEPT_ICON: Record<string, string> = { 社媒运营部: "📱", 运营部: "🧭", 市场部: "📣", 增员部: "🤝", 内容部: "🎬", 老板办公室: "👔", 出镜顾问: "🎙️", 销售部: "💼", 财务部: "🧮" };
 
 // 还没人坐的位子（2026-11-03 Wallace：「销售我可能还会单独找一个人」）。看板「移交销售」的客户都归这里。
 export const OPEN_SEATS: { department: string; title: string; note: string }[] = []; // 销售位已由 Bob 接手

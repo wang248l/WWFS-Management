@@ -288,6 +288,8 @@ const LOOKS: Record<string, Look> = {
   mac: { hair: "#c9891a", skin: "#fbdcc4", shirt: "#9ad9c0", dark: "#6fb89d", style: [], head: BABY_PINEAPPLE, eyeY: 13, mouthY: 16, extra: { G: "#3f9d55", g: "#67c174", Y: "#f6c945", y: "#d99a1e", T: "#c9891a", t: "#e8b03a" } },
   // Ivy 检查：格子侦探帽、驼色风衣
   inspector: { hair: "#5a3a22", skin: "#f8d5b8", shirt: "#c69a5b", dark: "#6e4f28", style: HAT_DETECTIVE, outfit: TRENCH, extra: { K: "#8a6a44", Y: "#5c4329", X: "#6e5233", L: "#ddb981", o: "#3a2a20" } },
+  // Wallace 老板：侧分短发、深灰西装
+  wallace: { hair: "#22222c", skin: "#f3c8a4", shirt: "#33363f", dark: "#2f9e57", style: HAIR_SIDE, outfit: SUIT, extra: { L: "#4d5160", o: "#c9ccd8" } },
   // Bob 销售：西装领带；Tina 会计：发髻 + 眼镜 + 开衫
   bob: { hair: "#4a3424", skin: "#f1c29c", shirt: "#2f3a5c", dark: "#d9452f", style: HAIR_SIDE, outfit: SUIT, extra: { L: "#46547f", o: "#c9ccd8" } },
   tina: { hair: "#2a1a14", skin: "#f8d5b8", shirt: "#4c9a6a", dark: "#357350", style: HAIR_BUN, outfit: CARDIGAN, glasses: true, extra: { o: "#f2e4b8" } },
@@ -397,22 +399,25 @@ function Person({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
 
 // ---- 家具 ----------------------------------------------------------------
 /** 办公桌：木桌面、抽屉、显示器（屏幕里有在写的内容）、键盘、鼠标、杯子。显示器在左边，不挡人。 */
-function Desk({ x, y, w, on, screen }: { x: number; y: number; w: number; on: boolean; screen?: string }) {
+function Desk({ x, y, w, on, screen, exec }: { x: number; y: number; w: number; on: boolean; screen?: string; exec?: boolean }) {
   const lit = on ? screen || "#a7e3ff" : "#30303c";
-  const kx = x + w - 24;
+  const kx = x + seatX(w) + 2;
+  const [top, topHi, grain, front, frontLn, seam, leg] = exec
+    ? ["#6b3a24", "#8a5233", "#5a2f1c", "#4f2a19", "#3e2013", "#5f3522", "#2e180e"]
+    : ["#c8935a", "#dfb07a", "#b98248", "#9c6a3c", "#7a4f2a", "#8a5c33", "#6b4426"];
   return (
     <g>
-      {R(x, y, w, 5, "#c8935a")}
-      {R(x, y, w, 1, "#dfb07a")}
-      {R(x + 6, y + 2, 7, 1, "#b98248")}
-      {R(x + w - 12, y + 3, 8, 1, "#b98248")}
-      {R(x, y + 5, w, 11, "#9c6a3c")}
-      {R(x, y + 5, w, 1, "#7a4f2a")}
-      {R(x + 3, y + 8, w - 6, 1, "#8a5c33")}
-      {R(x + 3, y + 13, w - 6, 1, "#8a5c33")}
-      {R(x, y + 16, w, 1, "#5e3b20")}
-      {R(x + 2, y + 17, 3, 6, "#6b4426")}
-      {R(x + w - 5, y + 17, 3, 6, "#6b4426")}
+      {R(x, y, w, 5, top)}
+      {R(x, y, w, 1, topHi)}
+      {R(x + 6, y + 2, 7, 1, grain)}
+      {R(x + w - 12, y + 3, 8, 1, grain)}
+      {R(x, y + 5, w, 11, front)}
+      {R(x, y + 5, w, 1, frontLn)}
+      {R(x + 3, y + 8, w - 6, 1, seam)}
+      {R(x + 3, y + 13, w - 6, 1, seam)}
+      {R(x, y + 16, w, 1, frontLn)}
+      {R(x + 2, y + 17, 3, 6, leg)}
+      {R(x + w - 5, y + 17, 3, 6, leg)}
       {/* 显示器 */}
       {R(x + 2, y - 15, 19, 13, "#23232d")}
       {R(x + 3, y - 14, 17, 10, lit, on ? "px-screen" : undefined)}
@@ -661,33 +666,180 @@ function Pantry({ x, y }: { x: number; y: number }) {
   );
 }
 
-const ROOM_FLOOR: Record<string, [string, string]> = {
-  市场部: ["#d7e8f7", "#c9def2"],
-  出镜顾问: ["#f8dce8", "#f2cddd"],
-  销售部: ["#e4dff7", "#d8d1f2"],
-  财务部: ["#f3eedb", "#ebe4cb"],
-  会议室: ["#e9e4dc", "#dfd8cd"],
-  茶水间: ["#efe6d2", "#e6dbc3"],
+// 2026-11-09 Wallace：「不要把每个办公室都设计的一样，人多就大一点」：每间房自己的墙、地面、家具，大小按人数分
+type RoomLook = { floor: [string, string]; kind: "tile" | "carpet" | "parquet" | "checker"; wall: string; wallKind: "foam" | "panel" | "paint" | "glass" | "subway"; trim: string };
+const ROOM_LOOK: Record<string, RoomLook> = {
+  市场部: { floor: ["#d7e8f7", "#c9def2"], kind: "tile", wall: "#6d7686", wallKind: "foam", trim: "#3a4150" },
+  老板办公室: { floor: ["#3f6360", "#4c7572"], kind: "carpet", wall: "#5e3c27", wallKind: "panel", trim: "#3a2416" },
+  销售部: { floor: ["#c9d6ee", "#aebfe0"], kind: "carpet", wall: "#2f62b8", wallKind: "paint", trim: "#1f4488" },
+  财务部: { floor: ["#d9b98a", "#c9a673"], kind: "parquet", wall: "#6f9a82", wallKind: "paint", trim: "#4c7560" },
+  会议室: { floor: ["#c3c7cd", "#a9aeb6"], kind: "carpet", wall: "#dfe7ee", wallKind: "glass", trim: "#8a96a3" },
+  茶水间: { floor: ["#fbf3df", "#e7a46b"], kind: "checker", wall: "#7fc4b8", wallKind: "subway", trim: "#4e9488" },
 };
+const DEFAULT_LOOK: RoomLook = { floor: ["#ece6dc", "#e2dacd"], kind: "tile", wall: "#a77c5a", wallKind: "paint", trim: "#7b573b" };
 
 const TILE = 16;
-const ROOM_W = 12 * TILE; // 192
-const ROOM_H = 9 * TILE; // 144
+const WALL_H = 2 * TILE;
 const HALL = 2 * TILE;
 const BIG_ROOM = "市场部";
+const BOSS_ROOM = "老板办公室";
 // 2026-11-09 Wallace：「排序是 Mark-Leo-Chase-Ivy，四个人的电脑都连接到 MAC」
 const SEAT_ORDER = ["mark", "leo", "mac", "inspector"];
 
+function Floor({ look, x, y, w, h }: { look: RoomLook; x: number; y: number; w: number; h: number }) {
+  const [a, b] = look.floor;
+  const out: JSX.Element[] = [R(x, y, w, h, a)].map((e) => <g key="base">{e}</g>);
+  const push = (k: string, e: JSX.Element) => out.push(<g key={k}>{e}</g>);
+  if (look.kind === "carpet") {
+    for (let i = 0; i < (w * h) / 40; i++) push(`d${i}`, R(x + ((i * 37) % w), y + ((i * 53) % h), 1, 1, b));
+  } else if (look.kind === "parquet") {
+    for (let r = 0; r * 8 < h; r++) {
+      const py = y + r * 8;
+      push(`r${r}`, R(x, py, w, 8, r % 2 ? a : b));
+      push(`l${r}`, R(x, py + 7, w, 1, shade(a, -0.2)));
+      for (let c = r % 2 ? 12 : 28; c < w; c += 32) push(`s${r}-${c}`, R(x + c, py, 1, 8, shade(a, -0.2)));
+    }
+  } else {
+    const size = look.kind === "checker" ? 12 : TILE;
+    for (let r = 0; r * size < h; r++)
+      for (let c = 0; c * size < w; c++) {
+        const col = (r + c) % 2 ? a : b;
+        const cw = Math.min(size, w - c * size), ch = Math.min(size, h - r * size);
+        push(`${r}-${c}`, R(x + c * size, y + r * size, cw, ch, col));
+        if (look.kind === "tile") {
+          push(`t${r}-${c}`, R(x + c * size, y + r * size, cw, 1, shade(col, 0.35)));
+          if (ch === size) push(`u${r}-${c}`, R(x + c * size, y + r * size + size - 1, cw, 1, shade(col, -0.08)));
+        }
+      }
+  }
+  return <g>{out}</g>;
+}
+
+function Wall({ look, x, y, w }: { look: RoomLook; x: number; y: number; w: number }) {
+  const out: JSX.Element[] = [];
+  const push = (k: string, e: JSX.Element) => out.push(<g key={k}>{e}</g>);
+  const dark = shade(look.wall, -0.18);
+  if (look.wallKind === "foam") {
+    for (let i = 0; i * 8 < w; i++) for (let j = 0; j < 4; j++) push(`${i}-${j}`, R(x + i * 8, y + j * 7 + 2, Math.min(7, w - i * 8), 6, (i + j) % 2 ? "#5d6675" : "#747e8f"));
+  } else if (look.wallKind === "panel") {
+    for (let i = 0; i * 24 < w; i++) {
+      push(`p${i}`, R(x + i * 24 + 3, y + 4, Math.min(18, w - i * 24 - 3), 21, shade(look.wall, 0.1)));
+      push(`q${i}`, R(x + i * 24 + 5, y + 6, Math.max(0, Math.min(14, w - i * 24 - 5)), 17, dark));
+    }
+  } else if (look.wallKind === "glass") {
+    push("g", R(x, y + 3, w, 24, "#eef6fb"));
+    for (let i = 0; i * 30 < w; i++) {
+      push(`m${i}`, R(x + i * 30, y, 2, WALL_H, look.trim));
+      push(`f${i}`, R(x + i * 30 + 6, y + 12, Math.max(0, Math.min(20, w - i * 30 - 6)), 6, "#cfdde8"));
+    }
+  } else if (look.wallKind === "subway") {
+    for (let r = 0; r < 4; r++)
+      for (let c = r % 2 ? -8 : 0; c < w; c += 16) {
+        const cx = Math.max(0, c);
+        push(`${r}-${c}`, R(x + cx, y + r * 7, Math.max(0, Math.min(c + 15 - cx, w - cx)), 6, r % 2 ? look.wall : shade(look.wall, 0.15)));
+      }
+  } else {
+    push("b", R(x, y, w, 7, dark));
+    push("c", R(x, y + 7, w, 1, shade(look.wall, 0.3)));
+  }
+  return <g>{out}</g>;
+}
+
+/** 窗：city 是老板办公室的落地大窗，看得到楼。 */
+function Window({ x, y, w, city }: { x: number; y: number; w: number; city?: boolean }) {
+  const inner = w - 4;
+  return (
+    <g>
+      {R(x, y, w, 21, city ? "#2a1a10" : "#f3efe6")}
+      {R(x + 2, y + 2, inner, 6, "#7fc4ff")}
+      {R(x + 2, y + 8, inner, 6, "#9fd6ff")}
+      {R(x + 2, y + 14, inner, 5, "#c8e9ff")}
+      {city
+        ? [[4, 10, 8], [16, 7, 13], [26, 12, 6], [42, 8, 11], [54, 11, 7], [66, 6, 12]].filter(([d]) => d < inner - 6).map(([d, bw, bh]) => (
+            <g key={d}>
+              {R(x + d, y + 19 - bh, Math.min(bw, inner - d), bh, "#5b6f8c")}
+              {R(x + d + 2, y + 21 - bh, 1, 1, "#ffe08a")}
+              {R(x + d + 5, y + 23 - bh, 1, 1, "#ffe08a")}
+            </g>
+          ))
+        : <>{R(x + 4, y + 5, Math.min(10, inner - 4), 3, "#ffffff", "px-cloud", 0.85)}</>}
+      {R(x + w / 2 - 1, y + 2, 2, 17, city ? "#2a1a10" : "#f3efe6")}
+    </g>
+  );
+}
+
+function Rug({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
+  return (
+    <g>
+      {R(x, y, w, h, "#7a3b3b")}
+      {R(x + 2, y + 2, w - 4, h - 4, "#d8b56a")}
+      {R(x + 3, y + 3, w - 6, h - 6, "#8f4a46")}
+    </g>
+  );
+}
+function Sofa({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      {R(x + 2, y, 54, 13, "#2f3a4f")}
+      {R(x + 4, y + 2, 24, 9, "#46546f")}
+      {R(x + 30, y + 2, 24, 9, "#46546f")}
+      {R(x, y + 11, 58, 11, "#27303f")}
+      {R(x + 4, y + 12, 24, 5, "#3a465e")}
+      {R(x + 30, y + 12, 24, 5, "#3a465e")}
+      {R(x - 4, y + 6, 6, 16, "#222a38")}
+      {R(x + 56, y + 6, 6, 16, "#222a38")}
+    </g>
+  );
+}
+/** 墙上的奖状 + 公司牌子。 */
+function Plaque({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      {R(x, y, 26, 18, "#d8b56a")}
+      {R(x + 2, y + 2, 22, 14, "#fffdf4")}
+      <text x={x + 13} y={y + 12} textAnchor="middle" fontSize={7} fill="#3a2416" className="px-font" fontWeight={700}>
+        WWFS
+      </text>
+    </g>
+  );
+}
+/** 销售部的彩旗。 */
+function Bunting({ x, y, w }: { x: number; y: number; w: number }) {
+  const cols = ["#f2c230", "#e0504a", "#4fd08a", "#ffffff"];
+  return (
+    <g>
+      {R(x, y, w, 1, "#ffffff")}
+      {[...Array(Math.floor(w / 12))].map((_, i) => <path key={i} d={`M${x + i * 12 + 2} ${y + 1}h8l-4 7z`} fill={cols[i % 4]} />)}
+    </g>
+  );
+}
+/** 财务部的保险柜。 */
+function Safe({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      {R(x, y, 28, 30, "#3e4a52")}
+      {R(x, y, 28, 2, "#5f6e78")}
+      {R(x + 3, y + 4, 22, 22, "#55636d")}
+      <circle cx={x + 14} cy={y + 15} r={6} fill="#c9ccd8" stroke="#2a3238" strokeWidth={1} />
+      {R(x + 13, y + 10, 2, 5, "#2a3238")}
+      {R(x + 2, y + 30, 5, 2, "#2a3238")}
+      {R(x + 21, y + 30, 5, 2, "#2a3238")}
+    </g>
+  );
+}
+
+const seatX = (w: number) => Math.max(22, Math.round((w - 20) / 2) + 6);
+
 function Worker({ p, x, deskY, w, on, screen, onHover, onLeave }: { p: PixelPerson; x: number; deskY: number; w: number; on: boolean; screen?: string; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
   const router = useRouter();
-  const px = x + w - 21;
+  const px = x + seatX(w);
   const py = deskY - 24;
   return (
     <g className="px-person cursor-pointer" onClick={() => (p.external ? window.open(p.href, "_blank") : router.push(p.href))} onMouseEnter={() => onHover(p)} onMouseLeave={onLeave}>
       <rect x={x} y={py - 14} width={w} height={62} fill="transparent" />
       <Chair x={px - 2} y={py - 2} />
       <Person p={p} x={px} y={py} />
-      <Desk x={x} y={deskY} w={w} on={on} screen={screen} />
+      <Desk x={x} y={deskY} w={w} on={on} screen={screen} exec={p.key === "wallace"} />
       <Bubble p={p} x={px + 3} y={py + 2} />
       <g className="px-cursor">
         <path d={`M${px + 5} ${py - 8}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
@@ -698,26 +850,26 @@ function Worker({ p, x, deskY, w, on, screen, onHover, onLeave }: { p: PixelPers
 }
 
 /** 市场部（摄影棚）：四张桌一排，每台电脑拉一根线到中间的 MAC，线上有数据在跑。 */
-function StudioSeats({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+function StudioSeats({ room, x, y, w, h, onHover, onLeave }: { room: PixelRoom; x: number; y: number; w: number; h: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
   const router = useRouter();
   const mac = room.people.find((p) => p.device);
   const staff = room.people.filter((p) => !p.device);
   const rank = (p: PixelPerson) => (SEAT_ORDER.indexOf(p.key) + 1 || 99);
   const people = [...staff].sort((a, b) => rank(a) - rank(b));
-  const w = Math.min(44, 176 / Math.max(1, people.length));
-  const left = x + (ROOM_W - w * people.length) / 2;
-  const deskY = y + 66;
-  const busY = y + 100;
-  const macX = x + ROOM_W / 2 - 17;
-  const macY = y + 108;
-  const cableX = (i: number) => left + i * w + 12;
-  const paths = people.map((_, i) => `M${cableX(i)} ${deskY + 1}V${busY}H${x + ROOM_W / 2}V${macY + 1}`);
+  const slot = Math.min(72, (w - 16) / Math.max(1, people.length));
+  const left = x + (w - slot * people.length) / 2;
+  const deskY = y + 74;
+  const busY = y + h - 56;
+  const macX = x + w / 2 - 17;
+  const macY = y + h - 46;
+  const cableX = (i: number) => Math.round(left + i * slot + 4 + 11);
+  const paths = people.map((_, i) => `M${cableX(i)} ${deskY + 1}V${busY}H${x + w / 2}V${macY + 1}`);
   return (
     <g>
       {paths.map((d) => <path key={"o" + d} d={d} stroke="#1e3a5f" strokeWidth={3} fill="none" />)}
       {paths.map((d) => <path key={d} d={d} stroke="#4fc3f7" strokeWidth={1} fill="none" />)}
       {people.map((p, i) => (
-        <Worker key={p.key} p={p} x={left + i * w + 1} deskY={deskY} w={w - 2} on={p.mood === "work" || p.mood === "happy"} onHover={onHover} onLeave={onLeave} />
+        <Worker key={p.key} p={p} x={left + i * slot + 4} deskY={deskY} w={slot - 8} on={p.mood === "work" || p.mood === "happy"} onHover={onHover} onLeave={onLeave} />
       ))}
       {/* 线画在桌前：从显示器底座下来，数据往 MAC 跑 */}
       {paths.map((d, i) => (
@@ -740,110 +892,113 @@ function StudioSeats({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: num
   );
 }
 
-function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
-  const router = useRouter();
-  const [f1, f2] = ROOM_FLOOR[room.name] || ["#ece6dc", "#e2dacd"];
-  const studio = room.name === BIG_ROOM;
-  const tiles: JSX.Element[] = [];
-  for (let ty = 2; ty < 9; ty++)
-    for (let tx = 0; tx < 12; tx++) {
-      const tl = (tx + ty) % 2 ? f1 : f2;
-      tiles.push(
-        <g key={`${tx}-${ty}`}>
-          {R(x + tx * TILE, y + ty * TILE, TILE, TILE, tl)}
-          {R(x + tx * TILE, y + ty * TILE, TILE, 1, shade(tl, 0.35))}
-          {R(x + tx * TILE, y + ty * TILE + TILE - 1, TILE, 1, shade(tl, -0.08))}
-          {R(x + tx * TILE + TILE - 1, y + ty * TILE, 1, TILE, shade(tl, -0.08))}
-        </g>,
+function RoomDecor({ name, x, y, w, h }: { name: string; x: number; y: number; w: number; h: number }) {
+  const b = y + h;
+  switch (name) {
+    case BIG_ROOM:
+      return (
+        <g>
+          <OnAir x={x + w / 2 + 44} y={y + 8} />
+          <Softbox x={x + 12} y={b - 42} />
+          <Camera x={x + 46} y={b - 42} />
+          <RingLight x={x + w - 82} y={b - 40} />
+          <Softbox x={x + w - 36} y={b - 42} />
+        </g>
       );
-    }
+    case BOSS_ROOM:
+      return (
+        <g>
+          <Plaque x={x + w - 58} y={y + 7} />
+          <Shelf x={x + w - 34} y={y + 38} />
+          <Plant x={x + w - 22} y={y + 72} />
+          <Rug x={x + w / 2 - 54} y={b - 38} w={108} h={32} />
+          <Sofa x={x + w / 2 - 29} y={b - 36} />
+        </g>
+      );
+    case "销售部":
+      return (
+        <g>
+          <Bunting x={x + 3} y={y + 25} w={w - 6} />
+          <Plant x={x + 5} y={b - 24} />
+          <ChartBoard x={x + w - 46} y={b - 42} />
+        </g>
+      );
+    case "财务部":
+      return (
+        <g>
+          <Safe x={x + 6} y={b - 36} />
+          <Cabinet x={x + w - 36} y={b - 38} />
+        </g>
+      );
+    case "茶水间":
+      return <Pantry x={x + 10} y={y + 58} />;
+    case "会议室":
+      return (
+        <g>
+          <MeetingTable x={x + Math.round((w - 112) / 2)} y={y + 58} />
+          <Plant x={x + 4} y={b - 24} />
+        </g>
+      );
+    default:
+      return <Plant x={x + 5} y={b - 24} />;
+  }
+}
+
+function Room({ room, x, y, w, h, onHover, onLeave }: { room: PixelRoom; x: number; y: number; w: number; h: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+  const router = useRouter();
+  const look = ROOM_LOOK[room.name] || DEFAULT_LOOK;
+  const studio = room.name === BIG_ROOM;
+  const boss = room.name === BOSS_ROOM;
   const slots = room.people.filter((p) => !p.device);
-  const slotW = 60;
-  const totalW = slots.length * slotW + (slots.length - 1) * 8;
-  const startX = x + Math.max(8, (ROOM_W - totalW) / 2);
-  const deskY = y + 4 * TILE + 26;
-  const wall = studio ? "#6d7686" : "#a77c5a";
-  const wallDark = shade(wall, -0.2);
+  const widths = slots.map((p) => (p.key === "wallace" ? 80 : boss ? 58 : 60));
+  const totalW = widths.reduce((n, v) => n + v, 0) + Math.max(0, slots.length - 1) * 10;
+  const startX = boss ? x + Math.max(10, (w - 44 - totalW) / 2) : x + Math.max(8, (w - totalW) / 2);
+  const deskY = y + 70;
+  const plateW = [...room.name].length * 9 + 14;
+  let cursor = startX;
 
   return (
     <g>
-      {tiles}
-      {/* 墙：摄影棚是吸音棉，其他房间是护墙板 */}
-      {R(x, y, ROOM_W, 2 * TILE, wall)}
-      {studio
-        ? [...Array(24)].map((_, i) => <g key={"f" + i}>{[...Array(4)].map((__, j) => <g key={j}>{R(x + i * 8, y + j * 7 + 2, 7, 6, (i + j) % 2 ? "#5d6675" : "#747e8f")}</g>)}</g>)
-        : [...Array(24)].map((_, i) => <g key={"p" + i}>{R(x + i * 8, y, 1, 2 * TILE, wallDark)}</g>)}
-      {R(x, y + 2 * TILE - 5, ROOM_W, 5, studio ? "#3a4150" : "#7b573b")}
-      {R(x, y + 2 * TILE - 5, ROOM_W, 1, studio ? "#59617a" : "#a07650")}
-      {/* 窗：蓝天白云，木窗框 */}
-      {R(x + 12, y + 4, 36, 21, "#f3efe6")}
-      {R(x + 14, y + 6, 32, 6, "#7fc4ff")}
-      {R(x + 14, y + 12, 32, 6, "#9fd6ff")}
-      {R(x + 14, y + 18, 32, 5, "#c8e9ff")}
-      {R(x + 29, y + 6, 2, 17, "#f3efe6")}
-      {R(x + 16, y + 9, 10, 3, "#ffffff", "px-cloud", 0.85)}
-      {R(x + 18, y + 7, 5, 2, "#ffffff", "px-cloud", 0.85)}
+      <Floor look={look} x={x} y={y + WALL_H} w={w} h={h - WALL_H} />
+      {R(x, y, w, WALL_H, look.wall)}
+      <Wall look={look} x={x} y={y} w={w} />
+      {R(x, y + WALL_H - 5, w, 5, look.trim)}
+      {R(x, y + WALL_H - 5, w, 1, shade(look.trim, 0.25))}
+      <Window x={x + 8} y={y + 4} w={boss ? Math.min(76, w / 2 - plateW / 2 - 14) : Math.min(30, w / 2 - plateW / 2 - 12)} city={boss} />
       {/* 钟 */}
-      <circle cx={x + ROOM_W - 16} cy={y + 14} r={9} fill="#fffdf4" stroke="#3a2a20" strokeWidth={2} />
-      {[[0, -7], [7, 0], [0, 7], [-7, 0]].map(([dx, dy]) => <g key={`${dx}${dy}`}>{R(x + ROOM_W - 16 + dx, y + 14 + dy, 1, 1, "#3a2a20")}</g>)}
-      {R(x + ROOM_W - 16, y + 9, 1, 6, "#3a2a20")}
-      {R(x + ROOM_W - 16, y + 14, 5, 1, "#c0392b", "px-hand")}
+      <circle cx={x + w - 16} cy={y + 14} r={9} fill="#fffdf4" stroke="#3a2a20" strokeWidth={2} />
+      {[[0, -7], [7, 0], [0, 7], [-7, 0]].map(([dx, dy]) => <g key={`${dx}${dy}`}>{R(x + w - 16 + dx, y + 14 + dy, 1, 1, "#3a2a20")}</g>)}
+      {R(x + w - 16, y + 9, 1, 6, "#3a2a20")}
+      {R(x + w - 16, y + 14, 5, 1, "#c0392b", "px-hand")}
       {/* 房间名牌 */}
-      {R(x + 60, y + 6, 72, 16, "#3a2a20")}
-      {R(x + 62, y + 8, 68, 12, "#fff8e7")}
-      <text x={x + 96} y={y + 17.5} textAnchor="middle" fontSize={9} fill="#3a2a20" className="px-font" fontWeight={700}>
+      {R(x + w / 2 - plateW / 2, y + 6, plateW, 16, "#3a2a20")}
+      {R(x + w / 2 - plateW / 2 + 2, y + 8, plateW - 4, 12, "#fff8e7")}
+      <text x={x + w / 2} y={y + 17.5} textAnchor="middle" fontSize={9} fill="#3a2a20" className="px-font" fontWeight={700}>
         {room.name}
       </text>
-      {/* 边框墙 */}
-      <rect x={x} y={y} width={ROOM_W} height={ROOM_H} fill="none" stroke="#5e3b20" strokeWidth={3} />
-      {/* 门 */}
-      {R(x + ROOM_W / 2 - 12, y + ROOM_H - 3, 24, 4, f1)}
+      {/* 边框墙 + 门 */}
+      <rect x={x} y={y} width={w} height={h} fill="none" stroke="#5e3b20" strokeWidth={3} />
+      {R(x + w / 2 - 12, y + h - 3, 24, 4, look.floor[0])}
 
-      {/* 装饰 */}
-      {studio ? (
-        <g>
-          <OnAir x={x + 136} y={y + 8} />
-          <Camera x={x + 12} y={y + 104} />
-          <Softbox x={x + ROOM_W - 34} y={y + 104} />
-          <RingLight x={x + 132} y={y + 108} />
-        </g>
-      ) : (
-        <>
-          <Plant x={x + 5} y={y + ROOM_H - 24} />
-          {room.name === "出镜顾问" ? (
-            <>
-              <Camera x={x + ROOM_W - 48} y={y + ROOM_H - 44} />
-              <Softbox x={x + 28} y={y + ROOM_H - 44} />
-            </>
-          ) : room.name === "销售部" ? (
-            <ChartBoard x={x + ROOM_W - 46} y={y + ROOM_H - 42} />
-          ) : room.name === "财务部" ? (
-            <Cabinet x={x + ROOM_W - 40} y={y + ROOM_H - 38} />
-          ) : room.name === "茶水间" ? (
-            <Pantry x={x + 30} y={y + 62} />
-          ) : room.name === "会议室" ? (
-            <MeetingTable x={x + 40} y={y + 62} />
-          ) : (
-            <Shelf x={x + ROOM_W - 34} y={y + ROOM_H - 34} />
-          )}
-        </>
-      )}
+      <RoomDecor name={room.name} x={x} y={y} w={w} h={h} />
 
       {studio ? (
-        <StudioSeats room={room} x={x} y={y} onHover={onHover} onLeave={onLeave} />
+        <StudioSeats room={room} x={x} y={y} w={w} h={h} onHover={onHover} onLeave={onLeave} />
       ) : (
         slots.map((p, i) => {
-          const sx = startX + i * (slotW + 8);
+          const sw = widths[i];
+          const sx = cursor;
+          cursor += sw + 10;
           if (p.seat)
             return (
               <g key={p.key} className="px-person cursor-pointer" onClick={() => router.push(p.href)} onMouseEnter={() => onHover(p)} onMouseLeave={onLeave}>
                 <Chair x={sx + 34} y={deskY - 26} />
-                <Desk x={sx} y={deskY} w={slotW} on={false} />
+                <Desk x={sx} y={deskY} w={sw} on={false} />
                 <Board x={sx + 22} y={deskY - 42} label="招聘中" />
-                <PixelLabel x={sx + slotW / 2} y={deskY + 14} text={p.name} />
+                <PixelLabel x={sx + sw / 2} y={deskY + 14} text={p.name} />
               </g>
             );
-          return <Worker key={p.key} p={p} x={sx} deskY={deskY} w={slotW} on={p.mood === "work" || p.mood === "happy"} screen="#c7f0c0" onHover={onHover} onLeave={onLeave} />;
+          return <Worker key={p.key} p={p} x={sx} deskY={deskY} w={sw} on={p.mood === "work" || p.mood === "happy"} screen="#c7f0c0" onHover={onHover} onLeave={onLeave} />;
         })
       )}
     </g>
@@ -1123,29 +1278,66 @@ function Conveyor({ x, y, w, people, shootStuck, driveStuck }: { x: number; y: n
 }
 
 const BELT_H = 74;
+const ROOM_WEIGHT: Record<string, number> = { 会议室: 2, 茶水间: 1.4 };
+
+/** 排房：人多的排第一排、分到的宽度多；一排里按人数分宽度，每间不小于 minW。 */
+function layoutRooms(real: PixelRoom[], cols: number, W: number) {
+  const size = (r: PixelRoom) => r.people.length;
+  let rows: PixelRoom[][];
+  const filler = (name: string): PixelRoom => ({ name, people: [] });
+  if (cols >= 3) {
+    rows = [real.filter((r) => size(r) >= 2), [...real.filter((r) => size(r) < 2), filler("会议室"), filler("茶水间")]];
+  } else {
+    const [first, ...rest] = [...real].sort((a, b) => size(b) - size(a));
+    if (rest.length % 2) rest.push(filler("会议室"));
+    rows = [[first]];
+    for (let i = 0; i < rest.length; i += 2) rows.push(rest.slice(i, i + 2));
+  }
+  const inner = W - 16;
+  return rows.filter((r) => r.length).map((row, ri) => {
+    const avail = inner - (row.length - 1) * 8;
+    const minW = ri === 0 && row.length > 1 ? 160 : 120;
+    const weight = (r: PixelRoom) => ROOM_WEIGHT[r.name] ?? Math.max(1, size(r));
+    const sum = row.reduce((n, r) => n + weight(r), 0);
+    const extra = Math.max(0, avail - row.length * minW);
+    let used = 0;
+    const cells = row.map((room, i) => {
+      const w = i === row.length - 1 ? avail - used : Math.round(minW + (extra * weight(room)) / sum);
+      used += w;
+      return { room, w };
+    });
+    return { cells, h: row.some((r) => size(r) >= 3) ? 168 : 136 };
+  });
+}
 
 function Map({ rooms: real, cols, onHover, onLeave, onClaude }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void; onClaude: () => void }) {
-  // 最后一排没坐满就补一间会议室（agent 请求开会就是约在这里）
-  const rooms = [...real];
-  for (const filler of ["会议室", "茶水间"]) if (rooms.length % cols) rooms.push({ name: filler, people: [] });
-  const rows = Math.ceil(rooms.length / cols);
-  const W = cols * ROOM_W + (cols + 1) * 8;
-  const H0 = rows * ROOM_H + (rows - 1) * HALL + 16;
+  const W = cols >= 3 ? 608 : 408;
+  const rows = layoutRooms(real, cols, W);
+  const H0 = rows.reduce((n, r) => n + r.h, 0) + (rows.length - 1) * HALL + 16;
   const mkt = real.find((r) => r.name === BIG_ROOM);
   const H = H0 + (mkt ? BELT_H : 0);
   const w = W - 16;
+  let top = 8;
+  const placed = rows.map((row) => {
+    const y = top;
+    top += row.h + HALL;
+    return { ...row, y };
+  });
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" shapeRendering="crispEdges" role="img" aria-label="WWFS办公室像素地图">
       <rect width={W} height={H} fill="#7a5a3f" />
-      {[...Array(rows - 1)].map((_, r) => (
-        <Hall key={r} x={8} y={8 + (r + 1) * ROOM_H + r * HALL} w={W - 16} />
+      {placed.slice(0, -1).map((row) => (
+        <Hall key={row.y} x={8} y={row.y + row.h} w={w} />
       ))}
-      {rooms.map((room, i) => {
-        const c = i % cols;
-        const r = Math.floor(i / cols);
-        return <Room key={room.name} room={room} x={8 + c * (ROOM_W + 8)} y={8 + r * (ROOM_H + HALL)} onHover={onHover} onLeave={onLeave} />;
+      {placed.map((row) => {
+        let x = 8;
+        return row.cells.map(({ room, w: rw }) => {
+          const rx = x;
+          x += rw + 8;
+          return <Room key={room.name} room={room} x={rx} y={row.y} w={rw} h={row.h} onHover={onHover} onLeave={onLeave} />;
+        });
       })}
-      {rows > 1 && <ClaudePatrol x={14} y={8 + ROOM_H + 10} w={W - 28} onClick={onClaude} />}
+      {placed.length > 1 && <ClaudePatrol x={14} y={placed[0].y + placed[0].h + 10} w={W - 28} onClick={onClaude} />}
       {mkt && (
         <g>
           <Conveyor x={8} y={H0 + 8} w={w} people={mkt.people} shootStuck={mkt.shootStuck} driveStuck={mkt.driveStuck} />
