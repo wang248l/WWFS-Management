@@ -36,7 +36,7 @@ export type PixelRoom = { name: string; people: PixelPerson[]; shootStuck?: stri
 
 // ---- 像素小人（2026-11-09 Wallace：「像素点最好多一点」「现在太抽象了」）----
 // 一个人 20×26 像素，一层层叠：头 → 身子 → 衣服 → 发型。五官、领口、领带、耳机都画得出来，全是自己画的。
-type Look = { hair: string; skin: string; shirt: string; dark: string; style: string[]; outfit?: string[]; glasses?: boolean; extra?: Record<string, string> };
+type Look = { hair: string; skin: string; shirt: string; dark: string; style: string[]; outfit?: string[]; glasses?: boolean; extra?: Record<string, string>; head?: string[]; eyeY?: number; mouthY?: number };
 
 const HEAD = [
   "....................",
@@ -177,6 +177,36 @@ const HOOD = [
   "...OHHHH....HHHHO...",
   "....OOHHHHHHHHOO....",
 ];
+// Chase（2026-11-09 Wallace：「是一个小宝宝的形象，我儿子的名字命名的，最标志的点是带着一个菠萝的毛线帽」）：
+// 圆脸大眼、连体衣，头上黄色菠萝针织帽，帽顶一簇绿叶。整张图一层画完，五官比大人低。
+const BABY_PINEAPPLE = [
+  "......g..GG..g......",
+  ".....gG.gGGg.Gg.....",
+  "......GGgGGgGG......",
+  ".......GGGGGG.......",
+  ".....OOOOOOOOOO.....",
+  "...OOYYyYYYYyYYOO...",
+  "..OYYyYyYYyYyYYYYO..",
+  "..OYyYYYyyYYYyYYYO..",
+  "..OyYYYyYYyYYYyYYO..",
+  "..OYyYyYYYYyYyYYYO..",
+  "..OTtTtTtTtTtTtTtO..",
+  "..OSSSSSSSSSSSSSSO..",
+  "..OSSSSSSSSSSSSSSO..",
+  "..OSSSWESSSSWESSSO..",
+  "..OSSSEESSSSEESSSO..",
+  "..OSBBSSSssSSSBBSO..",
+  "...OSSSSSMMSSSSSO...",
+  "....OOSSSSSSSSOO....",
+  "......OOOOOOOO......",
+  ".....OCCCCCCCCO.....",
+  "....OCCCWWWWCCCO....",
+  "....OCcCWWWWCcCO....",
+  "....OCcCWWWWCcCO....",
+  "....OCcCCCCCCcCO....",
+  "....OCcCCCCCCcCO....",
+  "....OCcCCCCCCcCO....",
+];
 // 衣服从第 16 行开始叠
 const SHIRT = [
   ".......WWssWW.......",
@@ -254,8 +284,8 @@ const LOOKS: Record<string, Look> = {
   mark: { hair: "#2b2b3a", skin: "#f6c9a4", shirt: "#2f7fd0", dark: "#235e9c", style: HAIR_CROP, outfit: SHIRT },
   // Leo 剪辑：卷发、头戴耳机、红卫衣
   leo: { hair: "#7a4f27", skin: "#f6cfa8", shirt: "#d9503f", dark: "#a93a2c", style: HAIR_WAVY_PHONES, outfit: HOODIE, extra: { G: "#2d2d3a", g: "#55c1ff" } },
-  // Chase 发布：贝雷帽、紫外套、白 T
-  mac: { hair: "#c2542f", skin: "#f8d2b4", shirt: "#7a6bd6", dark: "#5a4cb0", style: HAIR_BOB_BERET, outfit: JACKET, extra: { K: "#e0457b", k: "#f28bb0" } },
+  // Chase 发布：戴菠萝毛线帽的小宝宝
+  mac: { hair: "#c9891a", skin: "#fbdcc4", shirt: "#9ad9c0", dark: "#6fb89d", style: [], head: BABY_PINEAPPLE, eyeY: 13, mouthY: 16, extra: { G: "#3f9d55", g: "#67c174", Y: "#f6c945", y: "#d99a1e", T: "#c9891a", t: "#e8b03a" } },
   // Ivy 检查：格子侦探帽、驼色风衣
   inspector: { hair: "#5a3a22", skin: "#f8d5b8", shirt: "#c69a5b", dark: "#6e4f28", style: HAT_DETECTIVE, outfit: TRENCH, extra: { K: "#8a6a44", Y: "#5c4329", X: "#6e5233", L: "#ddb981", o: "#3a2a20" } },
   // Bob 销售：西装领带；Tina 会计：发髻 + 眼镜 + 开衫
@@ -315,9 +345,11 @@ function Person({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
   const L = lookFor(p.key);
   const pal = lookPal(L);
   const asleep = p.mood === "sleep";
+  const ey = y + (L.eyeY ?? 8);
+  const my = y + (L.mouthY ?? 12);
   return (
     <g className={"px-bob " + (asleep ? "px-slow" : "")}>
-      <Pixels rows={HEAD} pal={pal} x={x} y={y} />
+      <Pixels rows={L.head || HEAD} pal={pal} x={x} y={y} />
       {L.outfit && <Pixels rows={L.outfit} pal={pal} x={x} y={y + 16} />}
       <Pixels rows={L.style} pal={pal} x={x} y={y} />
       {L.glasses && (
@@ -333,21 +365,21 @@ function Person({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
           {R(x + 10, y + 8, 1, 1, "#2a1e1a")}
         </g>
       )}
-      {p.mood === "happy" && <>{R(x + 8, y + 12, 4, 2, "#b5525a")}{R(x + 9, y + 12, 2, 1, "#ffffff")}</>}
-      {p.mood === "alert" && <>{R(x + 8, y + 12, 4, 1, L.skin)}{R(x + 9, y + 12, 2, 2, "#7a2f35")}</>}
+      {p.mood === "happy" && <>{R(x + 8, my, 4, 2, "#b5525a")}{R(x + 9, my, 2, 1, "#ffffff")}</>}
+      {p.mood === "alert" && <>{R(x + 8, my, 4, 1, L.skin)}{R(x + 9, my, 2, 2, "#7a2f35")}</>}
       {asleep ? (
         <g>
-          {R(x + 6, y + 8, 2, 2, L.skin)}
-          {R(x + 12, y + 8, 2, 2, L.skin)}
-          {R(x + 6, y + 9, 2, 1, "#1a1420")}
-          {R(x + 12, y + 9, 2, 1, "#1a1420")}
+          {R(x + 6, ey, 2, 2, L.skin)}
+          {R(x + 12, ey, 2, 2, L.skin)}
+          {R(x + 6, ey + 1, 2, 1, "#1a1420")}
+          {R(x + 12, ey + 1, 2, 1, "#1a1420")}
         </g>
       ) : (
         <g className="px-blink">
-          {R(x + 6, y + 8, 2, 2, L.skin)}
-          {R(x + 12, y + 8, 2, 2, L.skin)}
-          {R(x + 6, y + 9, 2, 1, "#1a1420")}
-          {R(x + 12, y + 9, 2, 1, "#1a1420")}
+          {R(x + 6, ey, 2, 2, L.skin)}
+          {R(x + 12, ey, 2, 2, L.skin)}
+          {R(x + 6, ey + 1, 2, 1, "#1a1420")}
+          {R(x + 12, ey + 1, 2, 1, "#1a1420")}
         </g>
       )}
       {/* 手搭在键盘上，干活时左右轮流敲 */}
