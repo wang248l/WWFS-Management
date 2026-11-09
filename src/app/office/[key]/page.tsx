@@ -6,6 +6,7 @@ import TaskBoard from "../../_components/TaskBoard";
 import NeedsYou from "../../_components/NeedsYou";
 import ResolveIssueButton from "../../_components/ResolveIssueButton";
 import ProjectLink from "./ProjectLink";
+import AccountBoard, { type Board } from "../../_components/AccountBoard";
 import { loadSkills } from "@/lib/skills";
 import { loadAiLog } from "@/lib/aiLog";
 import { moodFor } from "../../_components/Avatar";
@@ -33,6 +34,13 @@ export default async function Desk({ params }: { params: { key: string } }) {
     },
   });
   if (!a) notFound();
+  const boardRow = await db.setting.findUnique({ where: { key: `board:${a.key}` } }).catch(() => null);
+  let board: Board | null = null;
+  try {
+    board = boardRow ? (JSON.parse(boardRow.value) as Board) : null;
+  } catch {
+    board = null;
+  }
   const needs = a.messages
     .filter((m) => m.fromRole === "agent" && (m.kind === "blocker" || m.kind === "meeting") && !m.resolvedAt)
     .map((m) => ({ ...m, agent: { key: a.key, name: a.name, avatar: a.avatar } }));
@@ -95,6 +103,8 @@ export default async function Desk({ params }: { params: { key: string } }) {
       </div>
 
       <NeedsYou needs={needs} link={false} />
+
+      {board && <AccountBoard board={board} />}
 
       {ai?.findings && (
         <section className="rise card p-4">
