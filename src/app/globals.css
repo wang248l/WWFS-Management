@@ -99,6 +99,8 @@
 .px-person:hover .px-bob { animation-duration: .5s; }
 .px-cat-walk { animation: px-walk 16s steps(64) infinite; }
 .px-cat-flip { transform-origin: center; animation: px-flip 16s steps(1) infinite; }
+.px-spin { transform-origin: center; animation: px-spin 1.6s steps(8) infinite; }
+@keyframes px-spin { to { transform: rotate(360deg) } }
 .px-caret { animation: px-blinkon 1s steps(2) infinite; }
 @keyframes px-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-1px) } }
 @keyframes px-a { 0% { opacity: 1 } 50% { opacity: 0 } }

@@ -399,7 +399,7 @@ function Person({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
 
 // ---- 家具 ----------------------------------------------------------------
 /** 办公桌：木桌面、抽屉、显示器（屏幕里有在写的内容）、键盘、鼠标、杯子。显示器在左边，不挡人。 */
-function Desk({ x, y, w, on, screen, exec }: { x: number; y: number; w: number; on: boolean; screen?: string; exec?: boolean }) {
+function Desk({ x, y, w, on, screen, exec, job }: { x: number; y: number; w: number; on: boolean; screen?: string; exec?: boolean; job?: string }) {
   const lit = on ? screen || "#a7e3ff" : "#30303c";
   const kx = x + seatX(w) + 2;
   const [top, topHi, grain, front, frontLn, seam, leg] = exec
@@ -421,14 +421,7 @@ function Desk({ x, y, w, on, screen, exec }: { x: number; y: number; w: number; 
       {/* 显示器 */}
       {R(x + 2, y - 15, 19, 13, "#23232d")}
       {R(x + 3, y - 14, 17, 10, lit, on ? "px-screen" : undefined)}
-      {on && (
-        <g>
-          {R(x + 4, y - 13, 9, 1, "#2f5f8f")}
-          {R(x + 4, y - 11, 13, 1, "#2f5f8f")}
-          {R(x + 4, y - 9, 6, 1, "#e0704f")}
-          {R(x + 4, y - 7, 11, 1, "#2f5f8f")}
-        </g>
-      )}
+      {on && <ScreenJob job={job || ""} x={x + 3} y={y - 14} />}
       {R(x + 3, y - 3, 17, 1, "#3a3a46")}
       {R(x + 10, y - 2, 3, 2, "#55555f")}
       {R(x + 7, y, 9, 1, "#3a3a46")}
@@ -634,7 +627,21 @@ function MacFace({ x, y, mood }: { x: number; y: number; mood: PixelPerson["mood
       {R(x + 4, y + 25, 26, 6, "#d8d8de")}
       {R(x + 4, y + 25, 26, 1, "#f2f2f7")}
       {R(x + 26, y + 28, 2, 1, mood === "alert" ? "#ff4d4d" : "#4dff8a", "px-rec")}
-      {[8, 11, 14, 17].map((d) => <g key={d}>{R(x + d, y + 28, 2, 1, "#8a8a96")}</g>)}
+      {[8, 11, 14, 17].map((d, i) => <g key={d}>{R(x + d, y + 28, 2, 1, "#8a8a96")}{mood !== "alert" && mood !== "sleep" && <rect x={x + d} y={y + 28} width={2} height={1} fill="#4dff8a"><Steps attr="opacity" values={[...Array(4)].map((_, t) => (t === i ? 1 : 0))} dur={0.8} /></rect>}</g>)}
+      {/* 机器在转：齿轮转、屏幕右下角进度走 */}
+      {mood !== "alert" && mood !== "sleep" && (
+        <g>
+          <g className="px-spin">
+            {[0, 1, 2, 3].map((k) => <rect key={k} x={x + 39} y={y + 1} width={4} height={18} fill="#8a8a96" transform={`rotate(${k * 45} ${x + 41} ${y + 10})`} />)}
+            <circle cx={x + 41} cy={y + 10} r={6} fill="#a9a9b4" stroke="#55555f" strokeWidth={1} />
+            <circle cx={x + 41} cy={y + 10} r={2} fill="#ececf2" />
+          </g>
+          {R(x + 4, y + 17, 26, 1, "#6fa3cf")}
+          <rect x={x + 4} y={y + 17} width={26} height={1} fill="#ffffff">
+            <animate attributeName="width" from={0} to={26} dur="2.5s" repeatCount="indefinite" />
+          </rect>
+        </g>
+      )}
     </g>
   );
 }
@@ -662,6 +669,291 @@ function Pantry({ x, y }: { x: number; y: number }) {
       {R(x + 72, y + 33, 34, 5, "#8a5c33")}
       {R(x + 84, y + 25, 6, 6, "#fffdf4")}
       {R(x + 90, y + 26, 2, 3, "#fffdf4")}
+    </g>
+  );
+}
+
+// ---- 工作动画（2026-11-09 Wallace：「所有任务的动画要反应工作特征，比如 Mark 是写稿的，Chase 是分发的，Leo 是剪辑的，Ivy 是巡检的」）----
+// 屏幕内容 + 桌上的东西都跟这个人的活有关；卡住（!）的时候全停，屏幕黑掉。
+const Steps = ({ attr, values, dur, begin }: { attr: string; values: (string | number)[]; dur: number; begin?: string }) => (
+  <animate attributeName={attr} values={values.join(";")} dur={`${dur}s`} begin={begin} calcMode="discrete" repeatCount="indefinite" />
+);
+
+/** 从 0 长到 w：第 start 拍开始，占 span 拍，一圈 total 拍。 */
+function growValues(w: number, start: number, span: number, total: number) {
+  return [...Array(total)].map((_, t) => Math.round(Math.max(0, Math.min(1, (t - start + 1) / span)) * w));
+}
+
+/** 显示器里的画面，17×10。 */
+function ScreenJob({ job, x, y }: { job: string; x: number; y: number }) {
+  switch (job) {
+    case "mark": // 文档一行行打出来
+      return (
+        <g>
+          {R(x, y, 17, 10, "#fffdf4")}
+          {[12, 15, 9, 13].map((w, i) => (
+            <rect key={i} x={x + 2} y={y + 1 + i * 2} width={w} height={1} fill={i === 0 ? "#d4704f" : "#3a3a46"}>
+              <Steps attr="width" values={growValues(w, i * 3, 3, 14)} dur={4.2} />
+            </rect>
+          ))}
+        </g>
+      );
+    case "leo": // 上面是预览，下面是时间线，播放头在走，有一段被剪掉
+      return (
+        <g>
+          {R(x, y, 17, 10, "#1f1f28")}
+          {R(x + 5, y + 1, 7, 5, "#7fc3ff")}
+          <path d={`M${x + 7} ${y + 2}l3 1.5l-3 1.5z`} fill="#fff" />
+          {R(x + 1, y + 7, 5, 2, "#e0704f")}
+          {R(x + 7, y + 7, 3, 2, "#f2c230")}
+          <rect x={x + 10} y={y + 7} width={3} height={2} fill="#ff5a5a">
+            <Steps attr="opacity" values={[1, 1, 1, 0.3, 0, 0]} dur={3} />
+          </rect>
+          {R(x + 13, y + 7, 3, 2, "#55c1ff")}
+          <rect x={x + 1} y={y + 6} width={1} height={4} fill="#ffffff">
+            <animate attributeName="x" from={x + 1} to={x + 15} dur="3s" repeatCount="indefinite" />
+          </rect>
+        </g>
+      );
+    case "mac": // 三条上传进度
+      return (
+        <g>
+          {R(x, y, 17, 10, "#eaf3ff")}
+          {[0, 1, 2].map((i) => (
+            <g key={i}>
+              {R(x + 2, y + 1 + i * 3, 13, 2, "#c8d3e2")}
+              <rect x={x + 2} y={y + 1 + i * 3} width={13} height={2} fill={["#ff6a8a", "#ff7a3d", "#4f9dff"][i]}>
+                <Steps attr="width" values={growValues(13, i * 2, 4, 9)} dur={3} />
+              </rect>
+            </g>
+          ))}
+        </g>
+      );
+    case "inspector": // 检查清单，一项项打勾
+      return (
+        <g>
+          {R(x, y, 17, 10, "#f4fff4")}
+          {[0, 1, 2].map((i) => (
+            <g key={i}>
+              {R(x + 6, y + 2 + i * 3, 9, 1, "#3a3a46")}
+              <rect x={x + 2} y={y + 1 + i * 3} width={2} height={2} fill="#2f9e57">
+                <Steps attr="opacity" values={[...Array(6)].map((_, t) => (t > i ? 1 : 0))} dur={3.6} />
+              </rect>
+            </g>
+          ))}
+        </g>
+      );
+    case "wallace": // 看反馈：柱子一根根长起来
+      return (
+        <g>
+          {R(x, y, 17, 10, "#f7fbff")}
+          {[3, 5, 4, 7].map((h, i) => (
+            <rect key={i} x={x + 2 + i * 4} y={y + 9 - h} width={2} height={h} fill={i === 3 ? "#2f9e57" : "#7aa8e0"}>
+              <Steps attr="opacity" values={[...Array(5)].map((_, t) => (t >= i ? 1 : 0))} dur={4} />
+            </rect>
+          ))}
+        </g>
+      );
+    case "amelia": // 日程表，格子一个个排上
+      return (
+        <g>
+          {R(x, y, 17, 10, "#fff5fa")}
+          {R(x, y, 17, 2, "#ec5f9e")}
+          {[...Array(10)].map((_, i) => (
+            <rect key={i} x={x + 1 + (i % 5) * 3} y={y + 3 + Math.floor(i / 5) * 3} width={2} height={2} fill={i % 3 ? "#f5a8ca" : "#7a6bd6"}>
+              <Steps attr="opacity" values={[...Array(11)].map((_, t) => (t >= i ? 1 : 0.15))} dur={5} />
+            </rect>
+          ))}
+        </g>
+      );
+    case "bob": // 客户名单，一行行成交变绿
+      return (
+        <g>
+          {R(x, y, 17, 10, "#f4f7ff")}
+          {[0, 1, 2].map((i) => (
+            <g key={i}>
+              {R(x + 2, y + 2 + i * 3, 9, 1, "#3a3a46")}
+              <rect x={x + 13} y={y + 1 + i * 3} width={3} height={2} fill="#2f9e57">
+                <Steps attr="fill" values={[...Array(6)].map((_, t) => (t > i * 2 ? "#2f9e57" : "#c8d3e2"))} dur={4.8} />
+              </rect>
+            </g>
+          ))}
+        </g>
+      );
+    case "tina": // 电子表格，光标一格格走
+      return (
+        <g>
+          {R(x, y, 17, 10, "#ffffff")}
+          {[3, 6, 9].map((d) => <g key={d}>{R(x, y + d, 17, 1, "#c7e3d0")}</g>)}
+          {[5, 11].map((d) => <g key={d}>{R(x + d, y, 1, 10, "#c7e3d0")}</g>)}
+          <rect x={x + 6} y={y + 1} width={5} height={2} fill="#2f9e57">
+            <Steps attr="y" values={[y + 1, y + 4, y + 7]} dur={2.4} />
+            <Steps attr="x" values={[x + 6, x + 12]} dur={1.6} />
+          </rect>
+        </g>
+      );
+    default:
+      return (
+        <g>
+          {R(x + 1, y + 1, 9, 1, "#2f5f8f")}
+          {R(x + 1, y + 3, 13, 1, "#2f5f8f")}
+          {R(x + 1, y + 5, 6, 1, "#e0704f")}
+          {R(x + 1, y + 7, 11, 1, "#2f5f8f")}
+        </g>
+      );
+  }
+}
+
+/** 一样东西从 from 划弧线飞到 to，dur 秒一趟。 */
+function Flyer({ from, to, dur, begin, children }: { from: [number, number]; to: [number, number]; dur: number; begin?: string; children: React.ReactNode }) {
+  const dx = to[0] - from[0], dy = to[1] - from[1];
+  return (
+    <g transform={`translate(${from[0]} ${from[1]})`}>
+      <g opacity={0}>
+        <animateMotion path={`M0 0Q${dx / 2} ${dy / 2 - 16} ${dx} ${dy}`} dur={`${dur}s`} begin={begin} repeatCount="indefinite" />
+        <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.9;1" dur={`${dur}s`} begin={begin} repeatCount="indefinite" />
+        {children}
+      </g>
+    </g>
+  );
+}
+const VideoCard = () => <>{R(0, 0, 8, 6, "#e0504a")}<path d="M3 1.5l3 1.5l-3 1.5z" fill="#fff" />{R(0, 0, 8, 1, "#ff8a80")}</>;
+const Sheet = () => <>{R(0, 0, 6, 8, "#fffdf4")}{R(1, 2, 4, 1, "#8a8a99")}{R(1, 4, 4, 1, "#8a8a99")}{R(1, 6, 3, 1, "#8a8a99")}</>;
+
+/** 桌上和头顶跟工作有关的东西。x 是桌子左边，y 是桌面，px/py 是人。 */
+function JobProps({ job, x, y, w, px, py }: { job: string; x: number; y: number; w: number; px: number; py: number }) {
+  const right = x + w - 10;
+  switch (job) {
+    case "mark": // 写好的稿一张张叠起来
+      return (
+        <g>
+          <rect x={right} y={y - 12} width={8} height={12} fill="#fffdf4">
+            <Steps attr="height" values={[2, 4, 6, 8, 10, 12]} dur={6} />
+            <Steps attr="y" values={[y - 2, y - 4, y - 6, y - 8, y - 10, y - 12]} dur={6} />
+          </rect>
+          {R(right, y - 1, 8, 1, "#b9b9c2")}
+          <Flyer from={[px + 8, y - 8]} to={[right + 1, y - 14]} dur={1.5}><Sheet /></Flyer>
+        </g>
+      );
+    case "leo": // 胶片和剪刀，一小段被剪下来掉到桌上
+      return (
+        <g>
+          {R(right - 2, y - 15, 12, 7, "#2d2d3a")}
+          {[0, 3, 6, 9].map((d) => <g key={d}>{R(right - 1 + d, y - 14, 1, 1, "#fffdf4")}{R(right - 1 + d, y - 10, 1, 1, "#fffdf4")}</g>)}
+          {R(right, y - 13, 8, 3, "#e0704f")}
+          <g className="px-frame-a"><path d={`M${right + 3} ${y - 22}l2 8M${right + 7} ${y - 22}l-2 8`} stroke="#c9ccd8" strokeWidth={1.5} /></g>
+          <g className="px-frame-b"><path d={`M${right + 1} ${y - 21}l4 7M${right + 9} ${y - 21}l-4 7`} stroke="#c9ccd8" strokeWidth={1.5} /></g>
+          <rect x={right + 6} y={y - 13} width={3} height={3} fill="#ff5a5a">
+            <Steps attr="y" values={[y - 13, y - 13, y - 9, y - 6, y - 3]} dur={2} />
+          </rect>
+        </g>
+      );
+    case "mac": { // Chase：把成片丢给三台手机
+      const phones = [px - 22, px + 2, px + 26];
+      const py2 = y - 42;
+      return (
+        <g>
+          {R(phones[0] - 3, py2 + 13, phones[2] - phones[0] + 15, 2, "#8a5a33")}
+          {phones.map((fx, i) => (
+            <g key={fx}>
+              {R(fx, py2, 9, 13, "#1f1f28")}
+              <rect x={fx + 1} y={py2 + 1} width={7} height={10} fill={["#ffb3c7", "#ffd2a8", "#b9dcff"][i]}>
+                <animate attributeName="fill" values={`${["#ffb3c7", "#ffd2a8", "#b9dcff"][i]};#ff5a5a`} keyTimes="0;0.8" dur="2.4s" begin={`${-i * 0.8}s`} calcMode="discrete" repeatCount="indefinite" />
+              </rect>
+              <Flyer from={[px + 6, y - 12]} to={[fx, py2 + 3]} dur={2.4} begin={`${-i * 0.8}s`}><VideoCard /></Flyer>
+            </g>
+          ))}
+        </g>
+      );
+    }
+    case "wallace": // 助理送来的报告
+      return (
+        <g>
+          {R(right - 8, y - 3, 12, 3, "#fffdf4")}
+          {R(right - 7, y - 5, 12, 2, "#f2e4b8")}
+          {R(right + 7, y - 6, 5, 6, "#fffdf4")}
+        </g>
+      );
+    case "amelia":
+      return (
+        <g>
+          {R(right, y - 7, 8, 7, "#ffe27a")}
+          {R(right + 1, y - 5, 6, 1, "#b08a2c")}
+          {R(right + 1, y - 3, 4, 1, "#b08a2c")}
+        </g>
+      );
+    case "bob": // 打电话，说着说着就成交
+      return (
+        <g>
+          {R(px + 17, py + 6, 3, 11, "#23232d")}
+          {R(px + 15, py + 6, 4, 3, "#23232d")}
+          {R(px + 15, py + 14, 4, 3, "#23232d")}
+          {R(right, y - 5, 9, 5, "#23232d")}
+          {R(right + 2, y - 4, 5, 2, "#7fc3ff", "px-rec")}
+          <g>
+            <Steps attr="opacity" values={[0, 1, 1, 0]} dur={2.4} />
+            {R(px + 22, py - 6, 16, 11, "#ffffff")}
+            {R(px + 22, py + 5, 3, 3, "#ffffff")}
+            <text x={px + 30} y={py + 3} textAnchor="middle" fontSize={8} fill="#2f9e57" className="px-font" fontWeight={700}>$</text>
+          </g>
+        </g>
+      );
+    case "tina": // 计算器吐出长长的账单
+      return (
+        <g>
+          <rect x={right + 1} y={y - 22} width={6} height={13} fill="#fffdf4">
+            <Steps attr="height" values={[2, 5, 8, 11, 13]} dur={3.5} />
+            <Steps attr="y" values={[y - 11, y - 14, y - 17, y - 20, y - 22]} dur={3.5} />
+          </rect>
+          {R(right, y - 9, 9, 9, "#55606e")}
+          {R(right + 1, y - 8, 7, 2, "#c7f0c0")}
+          {[0, 3, 6].map((d) => <g key={d}>{R(right + 1 + d, y - 5, 2, 1, "#e6e6ec", "px-rec")}{R(right + 1 + d, y - 3, 2, 1, "#e6e6ec")}</g>)}
+        </g>
+      );
+    default:
+      return null;
+  }
+}
+
+/** Ivy 巡检：离开座位，拿着放大镜和记录板一张桌一张桌查，查完打勾。 */
+function IvyPatrol({ p, stops, y, onHover, onLeave }: { p: PixelPerson; stops: number[]; y: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+  const router = useRouter();
+  const STAY = 1.5, WALK = 1;
+  const legs = [...stops, stops[0]];
+  const T = stops.length * STAY + (legs.length - 1) * WALK;
+  const times: number[] = [], xs: number[] = [], ok: number[] = [];
+  let t = 0;
+  stops.forEach((sx, i) => {
+    times.push(t / T); xs.push(sx - stops[0]); ok.push(1);
+    t += STAY;
+    times.push(t / T); xs.push(sx - stops[0]); ok.push(0);
+    t += WALK;
+    void i;
+  });
+  times.push(1); xs.push(0); ok.push(0);
+  const x = stops[0];
+  return (
+    <g className="px-person cursor-pointer" onClick={() => router.push(p.href)} onMouseEnter={() => onHover(p)} onMouseLeave={onLeave}>
+      <animateTransform attributeName="transform" type="translate" dur={`${T}s`} repeatCount="indefinite" keyTimes={times.map((v) => v.toFixed(4)).join(";")} values={xs.map((v) => `${v} 0`).join(";")} />
+      <rect x={x - 6} y={y - 12} width={36} height={52} fill="transparent" />
+      <Person p={p} x={x} y={y} />
+      {R(x + 3, y + 26, 14, 3, "#6e4f28")}
+      <g className="px-frame-a">{R(x + 4, y + 29, 5, 6, "#3d4256")}{R(x + 11, y + 29, 5, 3, "#3d4256")}{R(x + 3, y + 35, 7, 2, "#2a1e1a")}{R(x + 10, y + 32, 7, 2, "#2a1e1a")}</g>
+      <g className="px-frame-b">{R(x + 4, y + 29, 5, 3, "#3d4256")}{R(x + 11, y + 29, 5, 6, "#3d4256")}{R(x + 3, y + 32, 7, 2, "#2a1e1a")}{R(x + 10, y + 35, 7, 2, "#2a1e1a")}</g>
+      {/* 记录板 */}
+      {R(x - 5, y + 17, 9, 11, "#8a5a33")}
+      {R(x - 4, y + 18, 7, 9, "#fffdf4")}
+      {R(x - 3, y + 20, 5, 1, "#8a8a99")}
+      {R(x - 3, y + 23, 5, 1, "#8a8a99")}
+      {/* 放大镜 */}
+      <circle cx={x + 25} cy={y + 12} r={5} fill="#cfeaff" stroke="#3a2a20" strokeWidth={2} className="px-bang" />
+      <path d={`M${x + 21} ${y + 16}l-4 5`} stroke="#6b4426" strokeWidth={2.5} />
+      <g opacity={0}>
+        <animate attributeName="opacity" dur={`${T}s`} repeatCount="indefinite" calcMode="discrete" keyTimes={times.map((v) => v.toFixed(4)).join(";")} values={ok.join(";")} />
+        <rect x={x + 16} y={y - 16} width={14} height={13} fill="#fff" stroke="#2a1e1a" strokeWidth={1.5} />
+        <path d={`M${x + 19} ${y - 10}l3 3l5 -6`} stroke="#2f9e57" strokeWidth={2} fill="none" />
+      </g>
+      <Bubble p={p} x={x + 3} y={y + 2} />
     </g>
   );
 }
@@ -830,7 +1122,7 @@ function Safe({ x, y }: { x: number; y: number }) {
 
 const seatX = (w: number) => Math.max(22, Math.round((w - 20) / 2) + 6);
 
-function Worker({ p, x, deskY, w, on, screen, onHover, onLeave }: { p: PixelPerson; x: number; deskY: number; w: number; on: boolean; screen?: string; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+function Worker({ p, x, deskY, w, on, screen, away, onHover, onLeave }: { p: PixelPerson; x: number; deskY: number; w: number; on: boolean; screen?: string; away?: boolean; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
   const router = useRouter();
   const px = x + seatX(w);
   const py = deskY - 24;
@@ -838,12 +1130,15 @@ function Worker({ p, x, deskY, w, on, screen, onHover, onLeave }: { p: PixelPers
     <g className="px-person cursor-pointer" onClick={() => (p.external ? window.open(p.href, "_blank") : router.push(p.href))} onMouseEnter={() => onHover(p)} onMouseLeave={onLeave}>
       <rect x={x} y={py - 14} width={w} height={62} fill="transparent" />
       <Chair x={px - 2} y={py - 2} />
-      <Person p={p} x={px} y={py} />
-      <Desk x={x} y={deskY} w={w} on={on} screen={screen} exec={p.key === "wallace"} />
-      <Bubble p={p} x={px + 3} y={py + 2} />
-      <g className="px-cursor">
-        <path d={`M${px + 5} ${py - 8}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
-      </g>
+      {!away && <Person p={p} x={px} y={py} />}
+      <Desk x={x} y={deskY} w={w} on={on} screen={screen} exec={p.key === "wallace"} job={p.key} />
+      {on && <JobProps job={p.key} x={x} y={deskY} w={w} px={px} py={py} />}
+      {!away && <Bubble p={p} x={px + 3} y={py + 2} />}
+      {!away && (
+        <g className="px-cursor">
+          <path d={`M${px + 5} ${py - 8}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
+        </g>
+      )}
       <PixelLabel x={x + w / 2} y={deskY + 14} text={p.name} />
     </g>
   );
@@ -863,13 +1158,15 @@ function StudioSeats({ room, x, y, w, h, onHover, onLeave }: { room: PixelRoom; 
   const macX = x + w / 2 - 17;
   const macY = y + h - 46;
   const cableX = (i: number) => Math.round(left + i * slot + 4 + 11);
+  // Ivy 在岗就离开座位去巡检，卡住了才坐回桌前亮「!」
+  const ivyOut = people.find((p) => p.key === "inspector" && (p.mood === "work" || p.mood === "happy"));
   const paths = people.map((_, i) => `M${cableX(i)} ${deskY + 1}V${busY}H${x + w / 2}V${macY + 1}`);
   return (
     <g>
       {paths.map((d) => <path key={"o" + d} d={d} stroke="#1e3a5f" strokeWidth={3} fill="none" />)}
       {paths.map((d) => <path key={d} d={d} stroke="#4fc3f7" strokeWidth={1} fill="none" />)}
       {people.map((p, i) => (
-        <Worker key={p.key} p={p} x={left + i * slot + 4} deskY={deskY} w={slot - 8} on={p.mood === "work" || p.mood === "happy"} onHover={onHover} onLeave={onLeave} />
+        <Worker key={p.key} p={p} x={left + i * slot + 4} deskY={deskY} w={slot - 8} on={p.mood === "work" || p.mood === "happy"} away={p === ivyOut} onHover={onHover} onLeave={onLeave} />
       ))}
       {/* 线画在桌前：从显示器底座下来，数据往 MAC 跑 */}
       {paths.map((d, i) => (
@@ -877,6 +1174,7 @@ function StudioSeats({ room, x, y, w, h, onHover, onLeave }: { room: PixelRoom; 
           <animate attributeName="stroke-dashoffset" from="12" to="0" dur="0.9s" begin={`${i * 0.2}s`} repeatCount="indefinite" />
         </path>
       ))}
+      {ivyOut && <IvyPatrol p={ivyOut} stops={people.map((_, i) => Math.round(left + i * slot + slot / 2 - 10))} y={deskY + 25} onHover={onHover} onLeave={onLeave} />}
       {mac && (
         <g className="px-person cursor-pointer" onClick={() => router.push(mac.href)} onMouseEnter={() => onHover(mac)} onMouseLeave={onLeave}>
           <rect x={macX - 4} y={macY - 8} width={42} height={42} fill="transparent" />
@@ -1001,6 +1299,8 @@ function Room({ room, x, y, w, h, onHover, onLeave }: { room: PixelRoom; x: numb
           return <Worker key={p.key} p={p} x={sx} deskY={deskY} w={sw} on={p.mood === "work" || p.mood === "happy"} screen="#c7f0c0" onHover={onHover} onLeave={onLeave} />;
         })
       )}
+      {/* Amelia 当助理：整理好的文件送到 Wallace 桌上 */}
+      {boss && slots.length === 2 && <Flyer from={[startX + widths[0] + 10 + seatX(widths[1]), deskY - 14]} to={[startX + widths[0] - 16, deskY - 12]} dur={3}><Sheet /></Flyer>}
     </g>
   );
 }
