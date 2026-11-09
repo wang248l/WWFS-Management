@@ -307,8 +307,14 @@ async function main() {
   for (const n of ["Amelia", "Ishan"]) {
     await prisma.staff.updateMany({
       where: { name: n, department: null },
-      data: { department: "出镜顾问", workspaceUrl: "https://crm.wallacewang.ca" },
+      data: { department: n === "Amelia" ? "老板办公室" : "出镜顾问", workspaceUrl: "https://crm.wallacewang.ca" },
     });
+  }
+
+  // 2026-11-09 Wallace：「我的办公室有我和 Amelia，Amelia 是我的助理」——改一次（之后在名单页改的不覆盖）
+  if (!(await prisma.setting.findUnique({ where: { key: "migration:boss-office-20261109" } }))) {
+    await prisma.staff.updateMany({ where: { name: "Amelia" }, data: { department: "老板办公室", role: "老板助理" } });
+    await prisma.setting.create({ data: { key: "migration:boss-office-20261109", value: new Date().toISOString() } });
   }
 
   // 2) Local admin — only when SSO is NOT active. With COOKIE_DOMAIN set, CRM is
