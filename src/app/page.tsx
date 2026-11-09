@@ -83,7 +83,6 @@ export default async function Lobby() {
           statusLabel: a.needs ? `有 ${a.needs} 件事找你` : a.aiStuck.length ? `卡住 ${a.aiStuck.length} 件` : STATUS_LABEL[a.status].label,
           task: now?.title || null,
           unread: a.unread,
-          shared: !!a.host?.includes("共用"),
           device: a.key === "macmini",
           schedule: a.schedule,
           every: a.everyHours >= 24 && a.everyHours % 24 === 0 ? `每 ${a.everyHours / 24} 天一次` : `每 ${a.everyHours} 小时一次`,
