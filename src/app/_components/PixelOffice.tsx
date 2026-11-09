@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
  * 像素办公室（2026-11-03 Wallace：「我要在首页看到所有员工的脸，可以做成像素风格的，真的画一个办公室出来，
  * 然后这些员工坐在里面办公」——参考 GBA 时代的俯视角像素游戏风格，人物和场景都是自己画的）。
  *
- * 一张 SVG：每个部门一间房，墙、窗、地板、桌子、电脑、绿植；每个人一个 12×14 的像素小人。
+ * 一张 SVG：每个部门一间房，墙、窗、地板、桌子、电脑、绿植；每个人一个 20×26 的像素小人。
  * 状态直接画在头上：在岗敲键盘，未上岗打瞌睡（Zzz），找你 / 出错头顶红色「!」，有未读留言冒对话泡。
  * 鼠标放上去：头顶出现选择箭头，下面的对话框打字机式显示他在干什么；点一下进工位。
  * 桌面 3×2 间房，手机 2×3 间房（两张 SVG，按屏宽显示一张）。
@@ -24,127 +24,247 @@ export type PixelPerson = {
   statusLabel: string;
   task: string | null;
   unread: number;
-  shared?: boolean; // 共用一张桌一台电脑
   schedule?: string | null; // 定时任务：每天 07:35 / 12:35 / 17:35
   every?: string | null; // 周期：每 8 小时一次
   lastRun?: string | null; // 上次跑：3 小时前（打卡内容）
   host?: string | null;
   stuck?: string | null; // 头上「!」的原因
   seat?: boolean; // 空位（招聘中）
-  device?: boolean; // 设备本身是一个角色（MAC：Mark 和 Chase 共用的电脑）
+  device?: boolean; // 设备本身是一个角色（MAC：市场部四个人的电脑都连着它）
 };
 export type PixelRoom = { name: string; people: PixelPerson[]; shootStuck?: string | null; driveStuck?: string | null };
 
-// ---- 像素小人 -------------------------------------------------------------
-// O 描边 H 头发 S 皮肤 E 眼睛 B 腮红 M 嘴 C 衣服 D 衣服暗部 G 眼镜 .透明
-const FACE_SHORT = [
-  "..OOOOOOOO..",
-  ".OHHHHHHHHO.",
-  "OHHHHHHHHHHO",
-  "OHHSSSSSSHHO",
-  "OHSSSSSSSSHO",
-  "OSSESSSSESSO",
-  "OSSESSSSESSO",
-  "OSBSSSSSSBSO",
-  ".OSSSMMSSSO.",
-  "..OOSSSSOO..",
-];
-const FACE_LONG = [
-  "..OOOOOOOO..",
-  ".OHHHHHHHHO.",
-  "OHHHHHHHHHHO",
-  "OHHSSSSSSHHO",
-  "OHSSSSSSSSHO",
-  "OHSESSSSESHO",
-  "OHSESSSSESHO",
-  "OHBSSSSSSBHO",
-  "OHHSSMMSSHHO",
-  "OHHOSSSSOHHO",
-];
-const FACE_SPIKY = [
-  ".O.OO.OO.O..",
-  "OHOHHOHHOHO.",
-  "OHHHHHHHHHHO",
-  "OHHSSSSSSHHO",
-  "OHSSSSSSSSHO",
-  "OSSESSSSESSO",
-  "OSSESSSSESSO",
-  "OSBSSSSSSBSO",
-  ".OSSSMMSSSO.",
-  "..OOSSSSOO..",
-];
-const FACE_BUN = [
-  "....OOOO....",
-  "..OOHHHHOO..",
-  ".OHHHHHHHHO.",
-  "OHHSSSSSSHHO",
-  "OHSSSSSSSSHO",
-  "OSSESSSSESSO",
-  "OSSESSSSESSO",
-  "OSBSSSSSSBSO",
-  ".OSSSMMSSSO.",
-  "..OOSSSSOO..",
-];
-// 2026-11-03 Wallace 要「冒险游戏男女主角」和「农场游戏主人公」的感觉——这里是同类风格的原创造型，不照搬任何游戏角色。
-// K 帽子 Y 帽檐/背带 R 帽带 W 帽徽
-const FACE_CAP = [
-  "..OOOOOOOO..",
-  ".OKKKKKKKKO.",
-  "OKKKKWWKKKKO",
-  "OYYYYYYYYYYO",
-  "OHSSSSSSSSHO",
-  "OSSESSSSESSO",
-  "OSSESSSSESSO",
-  "OSBSSSSSSBSO",
-  ".OSSSMMSSSO.",
-  "..OOSSSSOO..",
-];
-const FACE_BERET = [
-  "...OOOOOO...",
-  "..OKKKKKKOO.",
-  ".OKKKKKKKKKO",
-  "OHHHHHHHHHHO",
-  "OHSSSSSSSSHO",
-  "OHSESSSSESHO",
-  "OHSESSSSESHO",
-  "OHBSSSSSSBHO",
-  "OHHSSMMSSHHO",
-  "OHHOSSSSOHHO",
-];
-const FACE_STRAW = [
-  "...OOOOOO...",
-  "..OKKKKKKO..",
-  "..ORRRRRRO..",
-  "OKKKKKKKKKKO",
-  "OHSSSSSSSSHO",
-  "OSSESSSSESSO",
-  "OSSESSSSESSO",
-  "OSBSSSSSSBSO",
-  ".OSSSMMSSSO.",
-  "..OOSSSSOO..",
-];
-const BODY_PACK = [".OCCCCCCCCO.", "OCYCCCCCCYCO", "OCYCCCCCCYCO"];
-const BODY_OVERALLS = [".OCCCCCCCCO.", "OCDDCCCCDDCO", "OCDDDDDDDDCO"];
-const BODY = [".OCCCCCCCCO.", "OCCCDCCDCCCO", "OCCCCCCCCCCO"];
-const HANDS_A = ["OSSCCCCCCSSO"];
-const HANDS_B = ["OCCSSCCSSCCO"];
+// ---- 像素小人（2026-11-09 Wallace：「像素点最好多一点」「现在太抽象了」）----
+// 一个人 20×26 像素，一层层叠：头 → 身子 → 衣服 → 发型。五官、领口、领带、耳机都画得出来，全是自己画的。
+type Look = { hair: string; skin: string; shirt: string; dark: string; style: string[]; outfit?: string[]; glasses?: boolean; extra?: Record<string, string> };
 
-type Look = { hair: string; skin: string; shirt: string; dark: string; face: string[]; glasses?: boolean; body?: string[]; extra?: Record<string, string> };
+const HEAD = [
+  "....................",
+  "....................",
+  "....OOOOOOOOOOOO....",
+  "...OSSSSSSSSSSSSO...",
+  "...OSSSSSSSSSSSSO...",
+  "...OSSSSSSSSSSSSO...",
+  "...OSSSSSSSSSSSSO...",
+  "...OSSKKKSSKKKSSO...",
+  "..OsSSWESSSSWESSsO..",
+  "..OsSSEESSSSEESSsO..",
+  "...OBSSSSssSSSSBO...",
+  "...OSSSSSSSSSSSSO...",
+  "...OSSSSMMMMSSSSO...",
+  "....OSSSSSSSSSSO....",
+  ".....OOOSSSSOOO.....",
+  ".......OssssO.......",
+  "....OOCCCssCCCOO....",
+  "..OOCCCCCssCCCCCOO..",
+  ".OCCCCCCCCCCCCCCCCO.",
+  ".OCcCCCCCCCCCCCCcCO.",
+  ".OCcCCCCCCCCCCCCcCO.",
+  ".OCcCCCCCCCCCCCCcCO.",
+  ".OCcCCCCCCCCCCCCcCO.",
+  ".OCcCCCCCCCCCCCCcCO.",
+  ".OCcCCCCCCCCCCCCcCO.",
+  ".OCcCCCCCCCCCCCCcCO.",
+];
+const HAIR_CROP = [
+  "....................",
+  ".....OOOOOOOOOO.....",
+  "...OOHHHHHHHHHHOO...",
+  "..OHHHhhhHHHHHHHHO..",
+  "..OHHhhHHHHHHHHHHO..",
+  "..OHHHHHHHHHHHHHHO..",
+  "..OHH.HHHH.HHH.HHO..",
+  "..OH............HO..",
+];
+const HAIR_WAVY_PHONES = [
+  ".....GGGGGGGGGG.....",
+  "...GGOOOOOOOOOOGG...",
+  "..GOOHHHHHHHHHHOOG..",
+  ".G.OHhHHHhHHHhHHO.G.",
+  ".G.OhHHHhHHHhHHHO.G.",
+  ".G.OHHHHHHHHHHHHO.G.",
+  ".G.OHH.HHHHH.HHHO.G.",
+  "GgGOH..........HOGgG",
+  "GgG..............GgG",
+  "GgG..............GgG",
+  "GgG..............GgG",
+  ".G................G.",
+];
+const HAIR_BOB_BERET = [
+  "......KKKKKKKK......",
+  "....KKkKKKKKKKKK....",
+  "..KKKKKKKKKKKKKKKK..",
+  "..OOOOOOOOOOOOOOOO..",
+  "..OHHHHHHHHHHHHHHO..",
+  "..OHHhHH.HHHHHHHHO..",
+  "..OHHH.......HHHHO..",
+  ".OHHH..........HHHO.",
+  ".OHHH..........HHHO.",
+  ".OHHH..........HHHO.",
+  ".OHhH..........HhHO.",
+  ".OHHH..........HHHO.",
+  ".OHHH..........HHHO.",
+  ".OHHH..........HHHO.",
+  ".OHHHO........OHHHO.",
+  "..OOO..........OOO..",
+];
+const HAIR_LONG = [
+  "....................",
+  ".....OOOOOOOOOO.....",
+  "...OOHHHHHHHHHHOO...",
+  "..OHHHhhHHHhhHHHHO..",
+  "..OHHhhHHHHHhhHHHO..",
+  "..OHHHHHH..HHHHHHO..",
+  ".OHHHHH......HHHHHO.",
+  ".OHHH..........HHHO.",
+  ".OHHH..........HHHO.",
+  ".OHhH..........HhHO.",
+  ".OHhH..........HhHO.",
+  ".OHHH..........HHHO.",
+  ".OHHH..........HHHO.",
+  ".OHHH..........HHHO.",
+  ".OHHHH........HHHHO.",
+  ".OHHHH........HHHHO.",
+  ".OHhHH........HHhHO.",
+  ".OHHHH........HHHHO.",
+  ".OHHHH........HHHHO.",
+  "..OOOO........OOOO..",
+];
+const HAIR_SIDE = [
+  "....................",
+  ".....OOOOOOOOOO.....",
+  "...OOHHHHHHHHHHOO...",
+  "..OHHHHHHHHhhhHHHO..",
+  "..OHHHHHHHhhHHHHHO..",
+  "..OHHHHHHHHHHHHHHO..",
+  "..OHHH..........HO..",
+  "..OH............HO..",
+];
+const HAIR_BUN = [
+  ".......OHHHHO.......",
+  ".......OHhHHO.......",
+  "....OOOOHHHHOOOO....",
+  "...OHHHHHHHHHHHHO...",
+  "..OHHHhhHHHHHHHHHO..",
+  "..OHHHHHHHHHHHHHHO..",
+  "..OHHHH......HHHHO..",
+  "..OH............HO..",
+];
+const HAT_DETECTIVE = [
+  ".....KKYKKYKKYK.....",
+  "....KYKKYKKYKKYK....",
+  "...KKYKKYKKYKKYKK...",
+  "...YKKYKKYKKYKKYK...",
+  "...KKYKKYKKYKKYKK...",
+  "..OOOOOOOOOOOOOOOO..",
+  "..XXXXXXXXXXXXXXXX..",
+  "..OH............HO..",
+];
+const HOOD = [
+  "....................",
+  ".....OOOOOOOOOO.....",
+  "...OOHHHHHHHHHHOO...",
+  "..OHHHhhHHHHHHHHHO..",
+  "..OHhhHHHHHHHHHHHO..",
+  "..OHHHHHHHHHHHHHHO..",
+  "..OHHHH......HHHHO..",
+  "..OHH..........HHO..",
+  "..OHH..........HHO..",
+  "..OHH..........HHO..",
+  "..OHH..........HHO..",
+  "..OHHH........HHHO..",
+  "..OHHHH......HHHHO..",
+  "...OHHHH....HHHHO...",
+  "....OOHHHHHHHHOO....",
+];
+// 衣服从第 16 行开始叠
+const SHIRT = [
+  ".......WWssWW.......",
+  "........WssW........",
+  ".........cc.........",
+  ".........Wc..cccc...",
+  ".........cc..c..c...",
+  ".........Wc..cccc...",
+  ".........cc.........",
+  ".........Wc.........",
+];
+const HOODIE = [
+  "......ccCssCcc......",
+  ".....cccCssCccc.....",
+  "........W..W........",
+  "........W..W........",
+  "........W..W........",
+  "....................",
+  ".....cccccccccc.....",
+  ".....c........c.....",
+];
+const JACKET = [
+  ".......WWssWW.......",
+  "......DWWWWWWD......",
+  "......DWWWWWWD......",
+  "......DWWKKWWD......",
+  "......DWWKKWWD......",
+  "......DWWWWWWD......",
+  "......DWWWWWWD......",
+  "......DWWWWWWD......",
+];
+const SUIT = [
+  ".......WWssWW.......",
+  "......LWWWWWWL......",
+  ".....LLWWDDWWLL.....",
+  "......LLWDDWLL......",
+  ".......LLDDLL.......",
+  "........LDDL........",
+  ".........LL.........",
+  ".........oo.........",
+];
+const TRENCH = [
+  "......LLLssLLL......",
+  ".....LLLLssLLLL.....",
+  "......LLLccLLL......",
+  ".......LLccLL.......",
+  "......o..cc..o......",
+  ".........cc.........",
+  "...DDDDDDooDDDDDD...",
+  "......o..cc..o......",
+];
+const BLAZER = [
+  ".......WWssWW.......",
+  "......LWWssWWL......",
+  "......LLWWWWLL......",
+  ".......LLWWLL.......",
+  "........LWWL........",
+  ".........LL.........",
+  ".........oo.........",
+  "....................",
+];
+const CARDIGAN = [
+  ".......WWssWW.......",
+  ".......cWWWWc.......",
+  ".......cWWWWc.......",
+  ".......cWWWWc.o.....",
+  ".......cWWWWc.......",
+  ".......cWWWWc.o.....",
+  ".......cWWWWc.......",
+  ".......cWWWWc.o.....",
+];
+
 const LOOKS: Record<string, Look> = {
-  // 社媒运营部：冒险少年（Mark）+ 冒险少女（Chase）
-  mark: { hair: "#2b2b3a", skin: "#f6c9a4", shirt: "#2f7fd0", dark: "#235e9c", face: FACE_CAP, body: BODY_PACK, extra: { K: "#1fa37a", Y: "#f2c230", W: "#ffffff" } },
-  mac: { hair: "#c2542f", skin: "#f8d2b4", shirt: "#f2f2f2", dark: "#d0d0d8", face: FACE_BERET, body: BODY_PACK, extra: { K: "#e0457b", Y: "#6b5bd6" } },
-  // 市场部：草帽农场主（Leo）
-  leo: { hair: "#8a5a2b", skin: "#f6cfa8", shirt: "#e8574a", dark: "#3d6fb8", face: FACE_STRAW, body: BODY_OVERALLS, extra: { K: "#f2cf6b", R: "#d9452f" } },
-  recruit: { hair: "#1f1f2a", skin: "#f4c7a2", shirt: "#16a394", dark: "#0f766e", face: FACE_BUN },
-  // 销售经理 Bob：西装领带；会计 Tina：眼镜 + 发髻
-  bob: { hair: "#4a3424", skin: "#f1c29c", shirt: "#2f3a5c", dark: "#d9452f", face: FACE_SHORT, body: [".OCCCWWCCCO.", "OCCCWDDWCCCO", "OCCCCDDCCCCO"], extra: { W: "#ffffff" } },
-  tina: { hair: "#2a1a14", skin: "#f8d5b8", shirt: "#4c9a6a", dark: "#357350", face: FACE_BUN, glasses: true },
-  // 检查员 Ivy：格子侦探帽 + 驼色风衣（原创）
-  inspector: { hair: "#5a3a22", skin: "#f8d5b8", shirt: "#c69a5b", dark: "#8f6a38", face: FACE_CAP, body: [".OCCCCCCCCO.", "OCDCCCCCCDCO", "OCDCCCCCCDCO"], extra: { K: "#7a5c3a", Y: "#5c4329", W: "#c9a66b" } },
-  ryzen: { hair: "#555a66", skin: "#eebf98", shirt: "#64748b", dark: "#46505f", face: FACE_SHORT },
-  amelia: { hair: "#3a2418", skin: "#f8d2b4", shirt: "#ec5f9e", dark: "#be3d77", face: FACE_LONG },
-  ishan: { hair: "#15151c", skin: "#b9805a", shirt: "#2f9e57", dark: "#21763f", face: FACE_SHORT },
+  // Mark 策划文案：短发、蓝衬衫
+  mark: { hair: "#2b2b3a", skin: "#f6c9a4", shirt: "#2f7fd0", dark: "#235e9c", style: HAIR_CROP, outfit: SHIRT },
+  // Leo 剪辑：卷发、头戴耳机、红卫衣
+  leo: { hair: "#7a4f27", skin: "#f6cfa8", shirt: "#d9503f", dark: "#a93a2c", style: HAIR_WAVY_PHONES, outfit: HOODIE, extra: { G: "#2d2d3a", g: "#55c1ff" } },
+  // Chase 发布：贝雷帽、紫外套、白 T
+  mac: { hair: "#c2542f", skin: "#f8d2b4", shirt: "#7a6bd6", dark: "#5a4cb0", style: HAIR_BOB_BERET, outfit: JACKET, extra: { K: "#e0457b", k: "#f28bb0" } },
+  // Ivy 检查：格子侦探帽、驼色风衣
+  inspector: { hair: "#5a3a22", skin: "#f8d5b8", shirt: "#c69a5b", dark: "#6e4f28", style: HAT_DETECTIVE, outfit: TRENCH, extra: { K: "#8a6a44", Y: "#5c4329", X: "#6e5233", L: "#ddb981", o: "#3a2a20" } },
+  // Bob 销售：西装领带；Tina 会计：发髻 + 眼镜 + 开衫
+  bob: { hair: "#4a3424", skin: "#f1c29c", shirt: "#2f3a5c", dark: "#d9452f", style: HAIR_SIDE, outfit: SUIT, extra: { L: "#46547f", o: "#c9ccd8" } },
+  tina: { hair: "#2a1a14", skin: "#f8d5b8", shirt: "#4c9a6a", dark: "#357350", style: HAIR_BUN, outfit: CARDIGAN, glasses: true, extra: { o: "#f2e4b8" } },
+  amelia: { hair: "#3a2418", skin: "#f8d2b4", shirt: "#ec5f9e", dark: "#be3d77", style: HAIR_LONG, outfit: BLAZER, extra: { L: "#f58cbb", o: "#fff1c9" } },
+  recruit: { hair: "#1f1f2a", skin: "#f4c7a2", shirt: "#16a394", dark: "#0f766e", style: HAIR_BUN, outfit: CARDIGAN, extra: { o: "#f2e4b8" } },
+  ryzen: { hair: "#555a66", skin: "#eebf98", shirt: "#64748b", dark: "#46505f", style: HAIR_SIDE, outfit: SHIRT },
+  ishan: { hair: "#15151c", skin: "#b9805a", shirt: "#2f9e57", dark: "#21763f", style: HAIR_CROP, outfit: SHIRT },
 };
 const FALLBACK = ["#e05d5d", "#4fa3e0", "#9fc94f", "#e0a84f", "#7a6fe0"];
 function lookFor(key: string): Look {
@@ -152,10 +272,15 @@ function lookFor(key: string): Look {
   if (LOOKS[k]) return LOOKS[k];
   const h = [...k].reduce((n, c) => n + c.charCodeAt(0), 0);
   const c = FALLBACK[h % FALLBACK.length];
-  return { hair: "#3a2a20", skin: "#f3c6a0", shirt: c, dark: c, face: h % 2 ? FACE_LONG : FACE_SHORT };
+  return { hair: "#3a2a20", skin: "#f3c6a0", shirt: c, dark: c, style: h % 2 ? HAIR_LONG : HAIR_CROP, outfit: h % 2 ? BLAZER : SHIRT, extra: { L: c, o: "#fff1c9" } };
 }
 
-const P = 2; // 一个像素 = 2 个 SVG 单位
+/** 颜色调亮（amt > 0）或调暗（amt < 0）。 */
+function shade(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v: number) => Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt).toString(16).padStart(2, "0");
+  return `#${f(n >> 16)}${f((n >> 8) & 255)}${f(n & 255)}`;
+}
 
 function Pixels({ rows, pal, x, y, className }: { rows: string[]; pal: Record<string, string>; x: number; y: number; className?: string }) {
   const rects: JSX.Element[] = [];
@@ -169,390 +294,343 @@ function Pixels({ rows, pal, x, y, className }: { rows: string[]; pal: Record<st
       }
       let run = 1;
       while (row[c + run] === ch) run++;
-      rects.push(<rect key={`${r}-${c}`} x={x + c * P} y={y + r * P} width={run * P} height={P} fill={pal[ch]} />);
+      rects.push(<rect key={`${r}-${c}`} x={x + c} y={y + r} width={run} height={1} fill={pal[ch]} />);
       c += run;
     }
   });
   return <g className={className}>{rects}</g>;
 }
 
+const R = (x: number, y: number, w: number, h: number, fill: string, className?: string, opacity?: number) => <rect x={x} y={y} width={w} height={h} fill={fill} className={className} opacity={opacity} />;
+
+function lookPal(L: Look): Record<string, string> {
+  return {
+    O: "#2a1e1a", H: L.hair, h: shade(L.hair, 0.28), K: shade(L.hair, -0.25), S: L.skin, s: shade(L.skin, -0.14), B: "#f5b0a6", E: "#1a1420", W: "#ffffff",
+    M: "#b5525a", C: L.shirt, c: shade(L.shirt, -0.2), D: L.dark,
+    ...(L.extra || {}),
+  };
+}
+
 function Person({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
-  const L = lookFor(p.key === "mac" ? "mac" : p.key);
-  const pal: Record<string, string> = { O: "#2a1e1a", H: L.hair, S: L.skin, E: "#1a1420", B: "#f29a9a", M: "#b5525a", C: L.shirt, D: L.dark, ...(L.extra || {}) };
-  const face = p.mood === "sleep" ? L.face.map((r, i) => (i === 5 ? r.replace(/E/g, "S") : i === 6 ? r.replace(/E/g, "E") : r)) : L.face;
-  const happyMouth = p.mood === "happy";
+  const L = lookFor(p.key);
+  const pal = lookPal(L);
+  const asleep = p.mood === "sleep";
   return (
-    <g className={"px-bob " + (p.mood === "sleep" ? "px-slow" : "")}>
-      <Pixels rows={face} pal={pal} x={x} y={y} />
+    <g className={"px-bob " + (asleep ? "px-slow" : "")}>
+      <Pixels rows={HEAD} pal={pal} x={x} y={y} />
+      {L.outfit && <Pixels rows={L.outfit} pal={pal} x={x} y={y + 16} />}
+      <Pixels rows={L.style} pal={pal} x={x} y={y} />
       {L.glasses && (
-        <g fill="none" stroke="#1a1420" strokeWidth={1}>
-          <rect x={x + 2.5 * P} y={y + 4.5 * P} width={3 * P} height={2.6 * P} />
-          <rect x={x + 6.5 * P} y={y + 4.5 * P} width={3 * P} height={2.6 * P} />
+        <g fill="#2a1e1a">
+          {[5, 11].map((d) => (
+            <g key={d}>
+              {R(x + d, y + 7, 5, 1, "#2a1e1a")}
+              {R(x + d, y + 10, 5, 1, "#2a1e1a")}
+              {R(x + d, y + 7, 1, 4, "#2a1e1a")}
+              {R(x + d + 4, y + 7, 1, 4, "#2a1e1a")}
+            </g>
+          ))}
+          {R(x + 10, y + 8, 1, 1, "#2a1e1a")}
         </g>
       )}
-      {happyMouth && <rect x={x + 4 * P} y={y + 8 * P} width={4 * P} height={P} fill="#b5525a" />}
-      {/* 眨眼：皮肤色盖住眼睛，偶尔闪一下 */}
-      {p.mood !== "sleep" && (
-        <g className="px-blink" fill={L.skin}>
-          <rect x={x + 3 * P} y={y + 5 * P} width={P} height={2 * P} />
-          <rect x={x + 8 * P} y={y + 5 * P} width={P} height={2 * P} />
+      {p.mood === "happy" && <>{R(x + 8, y + 12, 4, 2, "#b5525a")}{R(x + 9, y + 12, 2, 1, "#ffffff")}</>}
+      {p.mood === "alert" && <>{R(x + 8, y + 12, 4, 1, L.skin)}{R(x + 9, y + 12, 2, 2, "#7a2f35")}</>}
+      {asleep ? (
+        <g>
+          {R(x + 6, y + 8, 2, 2, L.skin)}
+          {R(x + 12, y + 8, 2, 2, L.skin)}
+          {R(x + 6, y + 9, 2, 1, "#1a1420")}
+          {R(x + 12, y + 9, 2, 1, "#1a1420")}
+        </g>
+      ) : (
+        <g className="px-blink">
+          {R(x + 6, y + 8, 2, 2, L.skin)}
+          {R(x + 12, y + 8, 2, 2, L.skin)}
+          {R(x + 6, y + 9, 2, 1, "#1a1420")}
+          {R(x + 12, y + 9, 2, 1, "#1a1420")}
         </g>
       )}
-      <Pixels rows={L.body || BODY} pal={pal} x={x} y={y + 10 * P} />
+      {/* 手搭在键盘上，干活时左右轮流敲 */}
       {p.mood === "work" || p.mood === "happy" ? (
         <>
-          <Pixels rows={HANDS_A} pal={pal} x={x} y={y + 13 * P} className="px-frame-a" />
-          <Pixels rows={HANDS_B} pal={pal} x={x} y={y + 13 * P} className="px-frame-b" />
+          <g className="px-frame-a">{R(x + 4, y + 22, 4, 3, L.skin)}{R(x + 12, y + 23, 4, 2, L.skin)}</g>
+          <g className="px-frame-b">{R(x + 4, y + 23, 4, 2, L.skin)}{R(x + 12, y + 22, 4, 3, L.skin)}</g>
         </>
       ) : (
-        <Pixels rows={HANDS_A} pal={pal} x={x} y={y + 13 * P} />
+        <>{R(x + 4, y + 23, 4, 2, L.skin)}{R(x + 12, y + 23, 4, 2, L.skin)}</>
       )}
     </g>
   );
 }
 
 // ---- 家具 ----------------------------------------------------------------
-function Desk({ x, y, w, on, imac, bare }: { x: number; y: number; w: number; on: boolean; imac?: boolean; bare?: boolean }) {
+/** 办公桌：木桌面、抽屉、显示器（屏幕里有在写的内容）、键盘、鼠标、杯子。显示器在左边，不挡人。 */
+function Desk({ x, y, w, on, screen }: { x: number; y: number; w: number; on: boolean; screen?: string }) {
+  const lit = on ? screen || "#a7e3ff" : "#30303c";
+  const kx = x + w - 24;
   return (
     <g>
-      <rect x={x} y={y} width={w} height={14} fill="#8a5a33" />
-      <rect x={x} y={y} width={w} height={3} fill="#b07a48" />
-      <rect x={x} y={y + 14} width={w} height={2} fill="#5e3b20" />
-      <rect x={x + 2} y={y + 16} width={3} height={6} fill="#5e3b20" />
-      <rect x={x + w - 5} y={y + 16} width={3} height={6} fill="#5e3b20" />
-      {bare ? null : imac ? (
+      {R(x, y, w, 5, "#c8935a")}
+      {R(x, y, w, 1, "#dfb07a")}
+      {R(x + 6, y + 2, 7, 1, "#b98248")}
+      {R(x + w - 12, y + 3, 8, 1, "#b98248")}
+      {R(x, y + 5, w, 11, "#9c6a3c")}
+      {R(x, y + 5, w, 1, "#7a4f2a")}
+      {R(x + 3, y + 8, w - 6, 1, "#8a5c33")}
+      {R(x + 3, y + 13, w - 6, 1, "#8a5c33")}
+      {R(x, y + 16, w, 1, "#5e3b20")}
+      {R(x + 2, y + 17, 3, 6, "#6b4426")}
+      {R(x + w - 5, y + 17, 3, 6, "#6b4426")}
+      {/* 显示器 */}
+      {R(x + 2, y - 15, 19, 13, "#23232d")}
+      {R(x + 3, y - 14, 17, 10, lit, on ? "px-screen" : undefined)}
+      {on && (
         <g>
-          <rect x={x + w / 2 - 13} y={y - 20} width={26} height={18} fill="#d8d8de" />
-          <rect x={x + w / 2 - 11} y={y - 18} width={22} height={13} fill={on ? "#7fc3ff" : "#3d3d4a"} className={on ? "px-screen" : ""} />
-          <rect x={x + w / 2 - 3} y={y - 2} width={6} height={3} fill="#b9b9c2" />
-          <rect x={x + w / 2 - 1} y={y - 15} width={2} height={2} fill="#ffffff" opacity={on ? 0.8 : 0.2} />
-        </g>
-      ) : (
-        // 一个人的桌：显示器放左边，不挡脸和手
-        <g>
-          <rect x={x + 2} y={y - 14} width={20} height={14} fill="#2d2d3a" />
-          <rect x={x + 4} y={y - 12} width={16} height={9} fill={on ? "#8fe08a" : "#3d3d4a"} className={on ? "px-screen" : ""} />
-          <rect x={x + 10} y={y} width={4} height={2} fill="#2d2d3a" />
+          {R(x + 4, y - 13, 9, 1, "#2f5f8f")}
+          {R(x + 4, y - 11, 13, 1, "#2f5f8f")}
+          {R(x + 4, y - 9, 6, 1, "#e0704f")}
+          {R(x + 4, y - 7, 11, 1, "#2f5f8f")}
         </g>
       )}
-      <rect x={x + w - 8} y={y - 5} width={5} height={6} fill="#f2f2f2" />
-      <rect x={x + w - 8} y={y - 5} width={5} height={2} fill="#6b3f1f" />
+      {R(x + 3, y - 3, 17, 1, "#3a3a46")}
+      {R(x + 10, y - 2, 3, 2, "#55555f")}
+      {R(x + 7, y, 9, 1, "#3a3a46")}
+      {/* 键盘 + 鼠标 */}
+      {R(kx, y + 1, 16, 3, "#e6e6ec")}
+      {[0, 2, 4, 6, 8, 10, 12, 14].map((d) => <g key={d}>{R(kx + d, y + 2, 1, 1, "#9a9aa8")}</g>)}
+      {R(kx + 18, y + 2, 3, 2, "#e6e6ec")}
     </g>
   );
 }
+/** 办公椅：靠背露在人的两侧和头后面。 */
 function Chair({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <rect x={x} y={y} width={20} height={16} fill="#8a6a50" />
-      <rect x={x + 2} y={y + 2} width={16} height={11} fill="#a8876a" />
+      {R(x + 3, y, 18, 8, "#3b3f4c")}
+      {R(x + 4, y + 1, 16, 2, "#565b6b")}
+      {R(x, y + 8, 24, 16, "#3b3f4c")}
+      {R(x + 1, y + 9, 22, 2, "#565b6b")}
     </g>
   );
 }
 function Plant({ x, y }: { x: number; y: number }) {
   return (
-    <g className="px-sway">
-      <rect x={x + 3} y={y + 12} width={10} height={8} fill="#b4552d" />
-      <rect x={x + 3} y={y + 12} width={10} height={2} fill="#d16b3d" />
-      <rect x={x + 6} y={y} width={4} height={12} fill="#2e8b45" />
-      <rect x={x} y={y + 3} width={6} height={4} fill="#3fae5a" />
-      <rect x={x + 10} y={y + 1} width={6} height={4} fill="#3fae5a" />
-      <rect x={x + 4} y={y - 3} width={8} height={4} fill="#57c46f" />
-    </g>
+    <Pixels
+      x={x}
+      y={y}
+      pal={{ G: "#3f9d55", g: "#67c174", D: "#2b7440", T: "#c56f43", t: "#e08c5c", d: "#8a4a2c" }}
+      rows={[
+        "......Gg........",
+        "....gGGG..G.....",
+        "...GGgGD.GgG....",
+        ".G..GGGDGGGD..g.",
+        "GgG..DGDGgD..GG.",
+        "GGGD..GDGD..GgGD",
+        ".DGGG.GDD.GGGD..",
+        "...DGGGDGGGD....",
+        "..g..DGDGD..G...",
+        "..GGD.GDD.GGD...",
+        "...DGGGDGGD.....",
+        ".....DGDD.......",
+        "...tttttttttt...",
+        "...TTTTTTTTTd...",
+        "....TTTTTTTd....",
+        "....TTTTTTTd....",
+        ".....TTTTTd.....",
+        ".....dddddd.....",
+      ]}
+    />
   );
 }
+/** 书架：一排排有颜色的书。 */
 function Shelf({ x, y }: { x: number; y: number }) {
-  const books = ["#d94f4f", "#4f7fd9", "#e0b84f", "#5fae6a", "#9a5fd9", "#e07f4f"];
+  const books = ["#d9503f", "#2f7fd0", "#f2c230", "#4c9a6a", "#7a6bd6", "#e0845c", "#3a3a46", "#ec5f9e"];
   return (
     <g>
-      <rect x={x} y={y} width={28} height={22} fill="#6b4426" />
-      <rect x={x + 2} y={y + 2} width={24} height={8} fill="#3e2716" />
-      <rect x={x + 2} y={y + 12} width={24} height={8} fill="#3e2716" />
-      {books.map((c, i) => (
-        <rect key={i} x={x + 3 + i * 4} y={y + (i % 2 ? 3 : 4)} width={3} height={i % 2 ? 7 : 6} fill={c} />
-      ))}
-      {books.slice(0, 4).map((c, i) => (
-        <rect key={"b" + i} x={x + 4 + i * 5} y={y + 13} width={4} height={7} fill={c} />
-      ))}
+      {R(x, y, 28, 30, "#7a4f2a")}
+      {R(x + 2, y + 2, 24, 26, "#4a2f1a")}
+      {R(x + 2, y + 14, 24, 2, "#7a4f2a")}
+      {[...Array(8)].map((_, i) => <g key={i}>{R(x + 3 + i * 3, y + 5 + (i % 3), 2, 9 - (i % 3), books[i])}</g>)}
+      {[...Array(8)].map((_, i) => <g key={"b" + i}>{R(x + 3 + i * 3, y + 19 + ((i * 2) % 3), 2, 9 - ((i * 2) % 3), books[(i + 3) % 8])}</g>)}
     </g>
   );
 }
+/** 摄像机上三脚架：机身、镜头玻璃、录制灯。 */
 function Camera({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <rect x={x + 6} y={y} width={14} height={10} fill="#2d2d3a" />
-      <rect x={x + 2} y={y + 3} width={5} height={5} fill="#5a5a6e" />
-      <rect x={x + 16} y={y + 2} width={2} height={2} fill="#ff4d4d" className="px-rec" />
-      <rect x={x + 12} y={y + 10} width={2} height={14} fill="#55555f" />
-      <rect x={x + 6} y={y + 22} width={14} height={2} fill="#55555f" />
-      <circle cx={x + 36} cy={y + 6} r={7} fill="none" stroke="#fff6c8" strokeWidth={3} />
-      <rect x={x + 35} y={y + 13} width={2} height={11} fill="#55555f" />
+      {R(x + 7, y - 3, 8, 3, "#23232d")}
+      {R(x + 2, y, 20, 13, "#23232d")}
+      {R(x + 3, y + 1, 18, 2, "#42424f")}
+      {R(x + 3, y + 3, 3, 6, "#3a3a46")}
+      {R(x + 22, y + 2, 3, 9, "#3a3a46")}
+      {R(x + 25, y + 1, 4, 11, "#55555f")}
+      {R(x + 29, y + 2, 2, 9, "#1a1a22")}
+      {R(x + 30, y + 4, 1, 5, "#6fb6ff")}
+      {R(x + 30, y + 4, 1, 2, "#ffffff")}
+      {R(x + 18, y + 1, 2, 1, "#ff4d4d", "px-rec")}
+      {R(x + 10, y + 13, 4, 3, "#55555f")}
+      <path d={`M${x + 12} ${y + 16}l-9 20M${x + 12} ${y + 16}v20M${x + 12} ${y + 16}l9 20`} stroke="#55555f" strokeWidth={1.5} fill="none" />
     </g>
   );
 }
 function Board({ x, y, label }: { x: number; y: number; label: string }) {
   return (
     <g>
-      <rect x={x} y={y} width={40} height={20} fill="#f6f1e1" stroke="#6b4426" strokeWidth={2} />
-      <text x={x + 20} y={y + 13} textAnchor="middle" fontSize={8} fill="#c0392b" className="px-font">
+      {R(x, y, 34, 18, "#7a4f2a")}
+      {R(x + 1, y + 1, 32, 16, "#fff8e7")}
+      <text x={x + 17} y={y + 12} textAnchor="middle" fontSize={7} fill="#c0392b" className="px-font" fontWeight={700}>
         {label}
       </text>
     </g>
   );
 }
-
-
-// ---- 农场（市场部）：田、菜苗、栅栏、小鸡、向日葵、草垛、水壶，全是原创像素 ----
-function Crop({ x, y, kind, delay }: { x: number; y: number; kind: number; delay: number }) {
-  const leaf = kind === 2 ? "#5fbf4a" : "#3fae5a";
-  return (
-    <g className="px-sway" style={{ animationDelay: `${delay}s` }}>
-      {kind === 0 && (
-        <>
-          <rect x={x + 3} y={y + 1} width={2} height={5} fill={leaf} />
-          <rect x={x} y={y + 2} width={3} height={2} fill={leaf} />
-          <rect x={x + 5} y={y + 1} width={3} height={2} fill={leaf} />
-        </>
-      )}
-      {kind === 1 && (
-        <>
-          <rect x={x + 2} y={y + 5} width={5} height={4} fill="#f0f0f0" />
-          <rect x={x + 3} y={y + 8} width={3} height={2} fill="#c86b9a" />
-          <rect x={x + 3} y={y} width={1} height={5} fill={leaf} />
-          <rect x={x + 5} y={y + 1} width={1} height={4} fill={leaf} />
-        </>
-      )}
-      {kind === 2 && (
-        <>
-          <rect x={x + 3} y={y + 4} width={3} height={6} fill="#f08a24" />
-          <rect x={x + 2} y={y} width={2} height={4} fill={leaf} />
-          <rect x={x + 5} y={y} width={2} height={4} fill={leaf} />
-        </>
-      )}
-    </g>
-  );
-}
-function FarmPlot({ x, y }: { x: number; y: number }) {
-  const cells = [];
-  for (let r = 0; r < 3; r++)
-    for (let c = 0; c < 4; c++) {
-      cells.push(<rect key={`s${r}${c}`} x={x + c * 12} y={y + r * 12} width={11} height={11} fill={(r + c) % 2 ? "#7a4e2c" : "#6b4426"} />);
-      cells.push(<rect key={`l${r}${c}`} x={x + c * 12} y={y + r * 12 + 9} width={11} height={2} fill="#553519" />);
-      cells.push(<Crop key={`c${r}${c}`} x={x + c * 12 + 1} y={y + r * 12} kind={(r * 4 + c) % 3} delay={((r + c) % 3) * 0.4} />);
-    }
-  return <g>{cells}</g>;
-}
-function Fence({ x, y, n }: { x: number; y: number; n: number }) {
-  return (
-    <g>
-      <rect x={x} y={y + 4} width={n * 10} height={2} fill="#c9a06a" />
-      <rect x={x} y={y + 9} width={n * 10} height={2} fill="#c9a06a" />
-      {[...Array(n + 1)].map((_, i) => (
-        <g key={i}>
-          <rect x={x + i * 10 - 1} y={y} width={3} height={14} fill="#e2bd86" />
-          <rect x={x + i * 10 - 1} y={y + 12} width={3} height={2} fill="#9c7444" />
-        </g>
-      ))}
-    </g>
-  );
-}
-function Chicken({ x, y, w }: { x: number; y: number; w: number }) {
-  return (
-    <g className="px-chick-walk" style={{ ["--run" as any]: `${w}px` }}>
-      <g className="px-chick-flip">
-        <rect x={x} y={y + 3} width={8} height={6} fill="#ffffff" />
-        <rect x={x + 6} y={y} width={5} height={5} fill="#ffffff" />
-        <rect x={x + 7} y={y - 2} width={3} height={2} fill="#e5383b" />
-        <rect x={x + 11} y={y + 2} width={2} height={1} fill="#f2a62b" />
-        <rect x={x + 9} y={y + 1} width={1} height={1} fill="#2a1e1a" />
-        <rect x={x - 1} y={y + 3} width={2} height={3} fill="#e8e8e8" />
-        <rect x={x + 2} y={y + 9} width={1} height={2} fill="#f2a62b" className="px-frame-a" />
-        <rect x={x + 5} y={y + 9} width={1} height={2} fill="#f2a62b" className="px-frame-b" />
-      </g>
-    </g>
-  );
-}
-function Sunflower({ x, y }: { x: number; y: number }) {
-  return (
-    <g className="px-sway">
-      <rect x={x + 4} y={y + 8} width={2} height={14} fill="#3fae5a" />
-      <rect x={x + 6} y={y + 14} width={4} height={2} fill="#3fae5a" />
-      <rect x={x} y={y} width={10} height={10} fill="#f7c531" />
-      <rect x={x + 2} y={y - 2} width={6} height={14} fill="#f7c531" />
-      <rect x={x - 2} y={y + 2} width={14} height={6} fill="#f7c531" />
-      <rect x={x + 2} y={y + 2} width={6} height={6} fill="#7a4a1c" />
-    </g>
-  );
-}
-function HayBale({ x, y }: { x: number; y: number }) {
-  return (
-    <g>
-      <rect x={x} y={y} width={26} height={16} fill="#e8c35a" />
-      <rect x={x} y={y} width={26} height={3} fill="#f5d77d" />
-      <rect x={x + 7} y={y} width={2} height={16} fill="#b38a2e" />
-      <rect x={x + 17} y={y} width={2} height={16} fill="#b38a2e" />
-      <rect x={x + 3} y={y + 7} width={4} height={1} fill="#c9a540" />
-      <rect x={x + 20} y={y + 10} width={4} height={1} fill="#c9a540" />
-    </g>
-  );
-}
-function WateringCan({ x, y }: { x: number; y: number }) {
-  return (
-    <g>
-      <rect x={x} y={y + 3} width={10} height={8} fill="#5b9bd5" />
-      <rect x={x + 10} y={y + 4} width={6} height={2} fill="#5b9bd5" />
-      <rect x={x + 15} y={y + 2} width={3} height={3} fill="#4a86bd" />
-      <rect x={x + 2} y={y} width={6} height={2} fill="#4a86bd" />
-      <rect x={x + 1} y={y + 5} width={8} height={1} fill="#8fc0ec" />
-    </g>
-  );
-}
-
-
+/** 白板：业绩柱子往上走。 */
 function ChartBoard({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <rect x={x} y={y} width={38} height={26} fill="#fffdf4" stroke="#55555f" strokeWidth={2} />
-      <rect x={x + 5} y={y + 16} width={5} height={6} fill="#4f7fd9" />
-      <rect x={x + 13} y={y + 12} width={5} height={10} fill="#4f7fd9" />
-      <rect x={x + 21} y={y + 8} width={5} height={14} fill="#4f7fd9" />
-      <rect x={x + 29} y={y + 4} width={5} height={18} fill="#2f9e57" className="px-blinkon-slow" />
-      <rect x={x + 17} y={y + 26} width={2} height={8} fill="#55555f" />
+      {R(x, y, 40, 28, "#9a9aa8")}
+      {R(x + 1, y + 1, 38, 26, "#ffffff")}
+      {[[5, 8], [12, 12], [19, 10], [26, 17], [33, 21]].map(([d, h]) => <g key={d}>{R(x + d, y + 24 - h, 4, h, d === 33 ? "#2f9e57" : "#7aa8e0")}</g>)}
+      {R(x + 3, y + 24, 34, 1, "#3a3a46")}
+      {R(x + 6, y + 28, 2, 10, "#7a7a86")}
+      {R(x + 32, y + 28, 2, 10, "#7a7a86")}
     </g>
   );
 }
+/** 文件柜：三层抽屉，有标签有把手。 */
 function Cabinet({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <rect x={x} y={y} width={22} height={28} fill="#8c96a6" />
-      {[0, 1, 2].map((i) => (
-        <g key={i}>
-          <rect x={x + 2} y={y + 2 + i * 9} width={18} height={7} fill="#a9b2c0" />
-          <rect x={x + 8} y={y + 4 + i * 9} width={6} height={2} fill="#55555f" />
+      {R(x, y, 30, 34, "#8d97a5")}
+      {R(x, y, 30, 2, "#b3bcc8")}
+      {[3, 13, 23].map((d) => (
+        <g key={d}>
+          {R(x + 2, y + d, 26, 9, "#a5afbc")}
+          {R(x + 2, y + d + 8, 26, 1, "#6f7986")}
+          {R(x + 10, y + d + 2, 10, 3, "#fffdf4")}
+          {R(x + 12, y + d + 6, 6, 1, "#3a3a46")}
         </g>
       ))}
-      <rect x={x + 26} y={y + 14} width={12} height={14} fill="#3d3d4a" />
-      <rect x={x + 28} y={y + 16} width={8} height={3} fill="#9fe08a" />
-      <rect x={x + 28} y={y + 21} width={2} height={2} fill="#d0d0d8" />
-      <rect x={x + 31} y={y + 21} width={2} height={2} fill="#d0d0d8" />
-      <rect x={x + 34} y={y + 21} width={2} height={2} fill="#f2a62b" />
-      <rect x={x + 28} y={y + 24} width={2} height={2} fill="#d0d0d8" />
-      <rect x={x + 31} y={y + 24} width={2} height={2} fill="#d0d0d8" />
     </g>
   );
 }
+/** 会议室：长桌、椅子、笔电、水杯。 */
 function MeetingTable({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      {[0, 1, 2].map((i) => (
-        <g key={i}>
-          <rect x={x + 10 + i * 34} y={y - 12} width={16} height={10} fill="#a8876a" />
-          <rect x={x + 10 + i * 34} y={y + 34} width={16} height={10} fill="#a8876a" />
-        </g>
-      ))}
-      <rect x={x} y={y} width={112} height={30} fill="#8a5a33" />
-      <rect x={x} y={y} width={112} height={3} fill="#b07a48" />
-      <rect x={x + 20} y={y + 10} width={10} height={8} fill="#f6f1e1" />
-      <rect x={x + 80} y={y + 12} width={8} height={6} fill="#f2f2f2" />
-      <text x={x + 56} y={y + 21} textAnchor="middle" fontSize={8} fill="#fff8e7" className="px-font">
-        开会请到这里
-      </text>
+      {[8, 34, 60, 86].map((d) => <g key={d}>{R(x + d, y - 12, 16, 10, "#3b3f4c")}{R(x + d + 1, y - 11, 14, 2, "#565b6b")}{R(x + d, y + 28, 16, 8, "#3b3f4c")}</g>)}
+      {R(x, y, 112, 24, "#a87447")}
+      {R(x, y, 112, 2, "#c8935a")}
+      {R(x, y + 24, 112, 3, "#6b4426")}
+      {R(x + 12, y + 8, 18, 10, "#d8d8de")}
+      {R(x + 13, y + 9, 16, 7, "#7fc3ff", "px-screen")}
+      {R(x + 70, y + 8, 18, 10, "#d8d8de")}
+      {R(x + 71, y + 9, 16, 7, "#8fe08a", "px-screen")}
+      {R(x + 48, y + 9, 5, 6, "#fffdf4")}
+      {R(x + 53, y + 10, 2, 3, "#fffdf4")}
     </g>
   );
 }
-
-
-// ---- 社媒运营部 = 拍摄工作室（2026-11-05 Wallace：「市场运营的办公室换一下风格，加入打光灯，摄像机，手机支架这样的元素，
-// 然后 MAC 设备要单独成为一个角色」）。全是原创像素。----
+/** 柔光灯：黑罩、发光的柔光布、灯架三只脚。 */
 function Softbox({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <path d={`M${x} ${y}h22l-4 16h-14z`} fill="#2d2d3a" />
-      <rect x={x + 3} y={y + 2} width={16} height={11} fill="#fff6d6" className="px-screen" />
-      <rect x={x + 10} y={y + 16} width={2} height={22} fill="#55555f" />
-      <path d={`M${x + 4} ${y + 40}l7 -4l7 4`} stroke="#55555f" strokeWidth={2} fill="none" />
+      <path d={`M${x - 4} ${y - 2}h30v22h-30z`} fill="#fff6c8" opacity={0.25} />
+      <path d={`M${x} ${y}h22v18h-22z`} fill="#23232d" />
+      {R(x + 2, y + 2, 18, 14, "#fffbe4", "px-screen")}
+      {R(x + 10, y + 2, 1, 14, "#efe2b4")}
+      {R(x + 2, y + 8, 18, 1, "#efe2b4")}
+      {R(x + 10, y + 18, 2, 18, "#55555f")}
+      <path d={`M${x + 11} ${y + 30}l-8 8M${x + 11} ${y + 30}l8 8`} stroke="#55555f" strokeWidth={1.5} fill="none" />
     </g>
   );
 }
-function PhoneTripod({ x, y }: { x: number; y: number }) {
+/** 环形补光灯夹手机。 */
+function RingLight({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <rect x={x} y={y} width={9} height={15} rx={1} fill="#1f1f28" />
-      <rect x={x + 1} y={y + 1} width={7} height={12} fill="#7fc3ff" className="px-screen" />
-      <rect x={x + 6} y={y + 2} width={1} height={1} fill="#ff4d4d" className="px-rec" />
-      <rect x={x + 4} y={y + 15} width={2} height={18} fill="#55555f" />
-      <path d={`M${x - 1} ${y + 36}l6 -4l6 4`} stroke="#55555f" strokeWidth={2} fill="none" />
-      <circle cx={x + 4.5} cy={y + 7} r={11} fill="none" stroke="#fff6c8" strokeWidth={2} opacity={0.9} />
+      <circle cx={x + 8} cy={y + 9} r={8} fill="none" stroke="#fff6c8" strokeWidth={3} className="px-screen" />
+      {R(x + 5, y + 3, 7, 12, "#1f1f28")}
+      {R(x + 6, y + 4, 5, 9, "#7fc3ff")}
+      {R(x + 9, y + 5, 1, 1, "#ff4d4d", "px-rec")}
+      {R(x + 7, y + 18, 2, 14, "#55555f")}
+      <path d={`M${x + 8} ${y + 28}l-6 6M${x + 8} ${y + 28}l6 6`} stroke="#55555f" strokeWidth={1.5} fill="none" />
     </g>
   );
 }
 function OnAir({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <rect x={x} y={y} width={22} height={10} rx={2} fill="#3a1a1a" />
-      <text x={x + 11} y={y + 7.5} textAnchor="middle" fontSize={6} fill="#ff5a5a" className="px-font px-rec" fontWeight={700}>
+      {R(x, y, 24, 11, "#3a1a1a")}
+      {R(x + 1, y + 1, 22, 9, "#561f1f")}
+      <text x={x + 12} y={y + 8} textAnchor="middle" fontSize={6} fill="#ff6a6a" className="px-font px-rec" fontWeight={700}>
         ● REC
       </text>
     </g>
   );
 }
-/** MAC：Mark 和 Chase 共用的那台电脑，自己是一个角色——屏幕就是它的脸。 */
+/** MAC：四个人的电脑都连到它。显示器就是它的脸，下面压着主机盒，亮灯。 */
 function MacFace({ x, y, mood }: { x: number; y: number; mood: PixelPerson["mood"] }) {
-  const screen = mood === "alert" ? "#ff8a8a" : mood === "sleep" ? "#3d3d4a" : "#7fc3ff";
+  const screen = mood === "alert" ? "#ff9a9a" : mood === "sleep" ? "#3d3d4a" : "#9ad6ff";
   return (
     <g className="px-bob">
-      <rect x={x} y={y} width={30} height={22} fill="#d8d8de" />
-      <rect x={x + 2} y={y + 2} width={26} height={16} fill={screen} className={mood === "sleep" ? "" : "px-screen"} />
+      {R(x, y, 34, 22, "#c9c9d2")}
+      {R(x, y, 34, 1, "#ececf2")}
+      {R(x + 2, y + 2, 30, 17, screen, mood === "sleep" ? undefined : "px-screen")}
+      {R(x + 2, y + 2, 30, 2, "#ffffff", undefined, 0.35)}
       {mood === "sleep" ? (
-        <g fill="#9a9aa8">
-          <rect x={x + 8} y={y + 9} width={4} height={1} />
-          <rect x={x + 18} y={y + 9} width={4} height={1} />
-        </g>
+        <g>{R(x + 9, y + 10, 4, 1, "#9a9aa8")}{R(x + 21, y + 10, 4, 1, "#9a9aa8")}</g>
       ) : (
-        <g fill="#1a1420">
-          <rect x={x + 9} y={y + 7} width={3} height={4} />
-          <rect x={x + 18} y={y + 7} width={3} height={4} />
-          <g className="px-blink" fill={screen}>
-            <rect x={x + 9} y={y + 7} width={3} height={4} />
-            <rect x={x + 18} y={y + 7} width={3} height={4} />
-          </g>
+        <g>
+          {R(x + 10, y + 7, 3, 5, "#1a1420")}
+          {R(x + 21, y + 7, 3, 5, "#1a1420")}
+          {R(x + 10, y + 7, 1, 1, "#ffffff")}
+          {R(x + 21, y + 7, 1, 1, "#ffffff")}
+          <g className="px-blink">{R(x + 10, y + 7, 3, 5, screen)}{R(x + 21, y + 7, 3, 5, screen)}</g>
+          {R(x + 7, y + 12, 2, 1, "#f5b0a6")}
+          {R(x + 25, y + 12, 2, 1, "#f5b0a6")}
         </g>
       )}
-      <rect x={x + (mood === "alert" ? 13 : 12)} y={y + 13} width={mood === "alert" ? 4 : 6} height={mood === "alert" ? 3 : 1} fill="#1a1420" />
-      <rect x={x + 12} y={y + 22} width={6} height={3} fill="#b9b9c2" />
-      <rect x={x + 9} y={y + 25} width={12} height={2} fill="#b9b9c2" />
+      {mood === "alert" ? R(x + 15, y + 13, 4, 3, "#1a1420") : <>{R(x + 14, y + 15, 6, 1, "#1a1420")}{R(x + 13, y + 14, 1, 1, "#1a1420")}{R(x + 20, y + 14, 1, 1, "#1a1420")}</>}
+      {R(x + 13, y + 22, 8, 3, "#a9a9b4")}
+      {R(x + 4, y + 25, 26, 6, "#d8d8de")}
+      {R(x + 4, y + 25, 26, 1, "#f2f2f7")}
+      {R(x + 26, y + 28, 2, 1, mood === "alert" ? "#ff4d4d" : "#4dff8a", "px-rec")}
+      {[8, 11, 14, 17].map((d) => <g key={d}>{R(x + d, y + 28, 2, 1, "#8a8a96")}</g>)}
     </g>
   );
 }
-
-
+/** 茶水间：咖啡机、沙发、茶几。 */
 function Pantry({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      {/* 咖啡机 */}
-      <rect x={x} y={y + 6} width={30} height={10} fill="#8a5a33" />
-      <rect x={x + 4} y={y - 14} width={16} height={20} fill="#3d3d4a" />
-      <rect x={x + 7} y={y - 10} width={10} height={4} fill="#9fe08a" className="px-screen" />
-      <rect x={x + 9} y={y} width={6} height={6} fill="#fffdf4" />
-      <rect x={x + 10} y={y - 4} width={1} height={3} fill="#e8e8e8" className="px-zzz" />
-      {/* 沙发 */}
-      <rect x={x + 60} y={y + 4} width={56} height={12} fill="#d4704f" />
-      <rect x={x + 60} y={y - 6} width={56} height={10} fill="#e08a6a" />
-      <rect x={x + 56} y={y - 2} width={6} height={18} fill="#b85a3a" />
-      <rect x={x + 114} y={y - 2} width={6} height={18} fill="#b85a3a" />
-      {/* 小桌 + 杯子 */}
-      <rect x={x + 76} y={y + 26} width={26} height={10} fill="#8a5a33" />
-      <rect x={x + 84} y={y + 21} width={5} height={6} fill="#fffdf4" />
+      {R(x - 6, y + 6, 40, 12, "#9c6a3c")}
+      {R(x - 6, y + 6, 40, 2, "#c8935a")}
+      {R(x + 4, y - 14, 18, 20, "#3a3a46")}
+      {R(x + 5, y - 13, 16, 3, "#55555f")}
+      {R(x + 7, y - 9, 12, 4, "#9fe08a", "px-screen")}
+      {R(x + 10, y - 3, 6, 2, "#23232d")}
+      {R(x + 10, y + 1, 6, 5, "#fffdf4")}
+      {R(x + 11, y - 2, 1, 3, "#e8e8e8", "px-zzz")}
+      {R(x + 60, y - 8, 58, 14, "#c9603f")}
+      {R(x + 62, y - 6, 26, 10, "#df7d5c")}
+      {R(x + 90, y - 6, 26, 10, "#df7d5c")}
+      {R(x + 58, y + 4, 62, 12, "#b5502f")}
+      {R(x + 62, y + 5, 26, 6, "#d4704f")}
+      {R(x + 90, y + 5, 26, 6, "#d4704f")}
+      {R(x + 54, y, 7, 18, "#a24527")}
+      {R(x + 117, y, 7, 18, "#a24527")}
+      {R(x + 72, y + 30, 34, 3, "#c8935a")}
+      {R(x + 72, y + 33, 34, 5, "#8a5c33")}
+      {R(x + 84, y + 25, 6, 6, "#fffdf4")}
+      {R(x + 90, y + 26, 2, 3, "#fffdf4")}
     </g>
   );
 }
 
 const ROOM_FLOOR: Record<string, [string, string]> = {
-  社媒运营部: ["#d7e8f7", "#c9def2"],
-  市场部: ["#8fd16a", "#82c75e"], // 草地
-  "剪辑 · 检查区": ["#8fd16a", "#82c75e"],
-  社媒运营区: ["#d7e8f7", "#c9def2"],
-  增员部: ["#d4f0ea", "#c3e8e0"],
-  内容部: ["#e6dcf5", "#dacdf0"],
+  市场部: ["#d7e8f7", "#c9def2"],
   出镜顾问: ["#f8dce8", "#f2cddd"],
   销售部: ["#e4dff7", "#d8d1f2"],
   财务部: ["#f3eedb", "#ebe4cb"],
@@ -564,162 +642,178 @@ const TILE = 16;
 const ROOM_W = 12 * TILE; // 192
 const ROOM_H = 9 * TILE; // 144
 const HALL = 2 * TILE;
+const BIG_ROOM = "市场部";
+// 2026-11-09 Wallace：「排序是 Mark-Leo-Chase-Ivy，四个人的电脑都连接到 MAC」
+const SEAT_ORDER = ["mark", "leo", "mac", "inspector"];
+
+function Worker({ p, x, deskY, w, on, screen, onHover, onLeave }: { p: PixelPerson; x: number; deskY: number; w: number; on: boolean; screen?: string; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+  const router = useRouter();
+  const px = x + w - 21;
+  const py = deskY - 24;
+  return (
+    <g className="px-person cursor-pointer" onClick={() => (p.external ? window.open(p.href, "_blank") : router.push(p.href))} onMouseEnter={() => onHover(p)} onMouseLeave={onLeave}>
+      <rect x={x} y={py - 14} width={w} height={62} fill="transparent" />
+      <Chair x={px - 2} y={py - 2} />
+      <Person p={p} x={px} y={py} />
+      <Desk x={x} y={deskY} w={w} on={on} screen={screen} />
+      <Bubble p={p} x={px + 3} y={py + 2} />
+      <g className="px-cursor">
+        <path d={`M${px + 5} ${py - 8}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
+      </g>
+      <PixelLabel x={x + w / 2} y={deskY + 14} text={p.name} />
+    </g>
+  );
+}
+
+/** 市场部（摄影棚）：四张桌一排，每台电脑拉一根线到中间的 MAC，线上有数据在跑。 */
+function StudioSeats({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
+  const router = useRouter();
+  const mac = room.people.find((p) => p.device);
+  const staff = room.people.filter((p) => !p.device);
+  const rank = (p: PixelPerson) => (SEAT_ORDER.indexOf(p.key) + 1 || 99);
+  const people = [...staff].sort((a, b) => rank(a) - rank(b));
+  const w = Math.min(44, 176 / Math.max(1, people.length));
+  const left = x + (ROOM_W - w * people.length) / 2;
+  const deskY = y + 66;
+  const busY = y + 100;
+  const macX = x + ROOM_W / 2 - 17;
+  const macY = y + 108;
+  const cableX = (i: number) => left + i * w + 12;
+  const paths = people.map((_, i) => `M${cableX(i)} ${deskY + 1}V${busY}H${x + ROOM_W / 2}V${macY + 1}`);
+  return (
+    <g>
+      {paths.map((d) => <path key={"o" + d} d={d} stroke="#1e3a5f" strokeWidth={3} fill="none" />)}
+      {paths.map((d) => <path key={d} d={d} stroke="#4fc3f7" strokeWidth={1} fill="none" />)}
+      {people.map((p, i) => (
+        <Worker key={p.key} p={p} x={left + i * w + 1} deskY={deskY} w={w - 2} on={p.mood === "work" || p.mood === "happy"} onHover={onHover} onLeave={onLeave} />
+      ))}
+      {/* 线画在桌前：从显示器底座下来，数据往 MAC 跑 */}
+      {paths.map((d, i) => (
+        <path key={"f" + d} d={d} stroke="#ffffff" strokeWidth={1} strokeDasharray="2 10" fill="none">
+          <animate attributeName="stroke-dashoffset" from="12" to="0" dur="0.9s" begin={`${i * 0.2}s`} repeatCount="indefinite" />
+        </path>
+      ))}
+      {mac && (
+        <g className="px-person cursor-pointer" onClick={() => router.push(mac.href)} onMouseEnter={() => onHover(mac)} onMouseLeave={onLeave}>
+          <rect x={macX - 4} y={macY - 8} width={42} height={42} fill="transparent" />
+          <MacFace x={macX} y={macY} mood={mac.mood} />
+          <Bubble p={mac} x={macX + 18} y={macY + 2} />
+          <g className="px-cursor">
+            <path d={`M${macX + 12} ${macY - 8}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
+          </g>
+          <PixelLabel x={macX - 17} y={macY + 26} text="MAC" />
+        </g>
+      )}
+    </g>
+  );
+}
 
 function Room({ room, x, y, onHover, onLeave }: { room: PixelRoom; x: number; y: number; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
   const router = useRouter();
   const [f1, f2] = ROOM_FLOOR[room.name] || ["#ece6dc", "#e2dacd"];
-  const farm = room.name === "市场部" || room.name === "剪辑 · 检查区";
-  const studio = room.name === "社媒运营部" || room.name === "社媒运营区";
-  const macDev = room.people.find((p) => p.device);
+  const studio = room.name === BIG_ROOM;
   const tiles: JSX.Element[] = [];
   for (let ty = 2; ty < 9; ty++)
-    for (let tx = 0; tx < 12; tx++)
-      tiles.push(<rect key={`${tx}-${ty}`} x={x + tx * TILE} y={y + ty * TILE} width={TILE} height={TILE} fill={(tx + ty) % 2 ? f1 : f2} />);
-
-  // 座位：共用的两个人一张长桌一台 iMac，其他人各一张桌
-  const shared = room.people.filter((p) => p.shared && !p.device);
-  const solo = room.people.filter((p) => !p.shared && !p.device);
-  type Slot = { people: PixelPerson[]; w: number };
-  const slots: Slot[] = [];
-  if (shared.length >= 2) slots.push({ people: shared, w: 110 });
-  else solo.unshift(...shared);
-  for (const p of solo) slots.push({ people: [p], w: 60 });
-  const totalW = slots.reduce((n, s) => n + s.w, 0) + (slots.length - 1) * 8;
-  let cx = x + Math.max(8, (ROOM_W - totalW) / 2);
+    for (let tx = 0; tx < 12; tx++) {
+      const tl = (tx + ty) % 2 ? f1 : f2;
+      tiles.push(
+        <g key={`${tx}-${ty}`}>
+          {R(x + tx * TILE, y + ty * TILE, TILE, TILE, tl)}
+          {R(x + tx * TILE, y + ty * TILE, TILE, 1, shade(tl, 0.35))}
+          {R(x + tx * TILE, y + ty * TILE + TILE - 1, TILE, 1, shade(tl, -0.08))}
+          {R(x + tx * TILE + TILE - 1, y + ty * TILE, 1, TILE, shade(tl, -0.08))}
+        </g>,
+      );
+    }
+  const slots = room.people.filter((p) => !p.device);
+  const slotW = 60;
+  const totalW = slots.length * slotW + (slots.length - 1) * 8;
+  const startX = x + Math.max(8, (ROOM_W - totalW) / 2);
   const deskY = y + 4 * TILE + 26;
+  const wall = studio ? "#6d7686" : "#a77c5a";
+  const wallDark = shade(wall, -0.2);
 
   return (
     <g>
       {tiles}
-      {/* 墙 + 窗 + 钟 */}
-      <rect x={x} y={y} width={ROOM_W} height={2 * TILE} fill={farm ? "#b5473a" : "#a77c5a"} />
-      {farm && [...Array(12)].map((_, i) => <rect key={"pl" + i} x={x + i * 16} y={y} width={1} height={2 * TILE} fill="#8f3329" />)}
-      <rect x={x} y={y + 2 * TILE - 4} width={ROOM_W} height={4} fill={farm ? "#f3efe6" : "#7b573b"} />
-      <rect x={x + 20} y={y + 6} width={30} height={18} fill="#9fd6ff" stroke="#f3efe6" strokeWidth={2} />
-      <rect x={x + 34} y={y + 6} width={2} height={18} fill="#f3efe6" />
-      <rect x={x + 22} y={y + 8} width={8} height={3} fill="#ffffff" opacity={0.7} className="px-cloud" />
-      <circle cx={x + ROOM_W - 26} cy={y + 15} r={7} fill="#f3efe6" stroke="#5e3b20" strokeWidth={2} />
-      <rect x={x + ROOM_W - 27} y={y + 10} width={2} height={6} fill="#5e3b20" />
-      <rect x={x + ROOM_W - 27} y={y + 14} width={5} height={2} fill="#5e3b20" className="px-hand" />
+      {/* 墙：摄影棚是吸音棉，其他房间是护墙板 */}
+      {R(x, y, ROOM_W, 2 * TILE, wall)}
+      {studio
+        ? [...Array(24)].map((_, i) => <g key={"f" + i}>{[...Array(4)].map((__, j) => <g key={j}>{R(x + i * 8, y + j * 7 + 2, 7, 6, (i + j) % 2 ? "#5d6675" : "#747e8f")}</g>)}</g>)
+        : [...Array(24)].map((_, i) => <g key={"p" + i}>{R(x + i * 8, y, 1, 2 * TILE, wallDark)}</g>)}
+      {R(x, y + 2 * TILE - 5, ROOM_W, 5, studio ? "#3a4150" : "#7b573b")}
+      {R(x, y + 2 * TILE - 5, ROOM_W, 1, studio ? "#59617a" : "#a07650")}
+      {/* 窗：蓝天白云，木窗框 */}
+      {R(x + 12, y + 4, 36, 21, "#f3efe6")}
+      {R(x + 14, y + 6, 32, 6, "#7fc4ff")}
+      {R(x + 14, y + 12, 32, 6, "#9fd6ff")}
+      {R(x + 14, y + 18, 32, 5, "#c8e9ff")}
+      {R(x + 29, y + 6, 2, 17, "#f3efe6")}
+      {R(x + 16, y + 9, 10, 3, "#ffffff", "px-cloud", 0.85)}
+      {R(x + 18, y + 7, 5, 2, "#ffffff", "px-cloud", 0.85)}
+      {/* 钟 */}
+      <circle cx={x + ROOM_W - 16} cy={y + 14} r={9} fill="#fffdf4" stroke="#3a2a20" strokeWidth={2} />
+      {[[0, -7], [7, 0], [0, 7], [-7, 0]].map(([dx, dy]) => <g key={`${dx}${dy}`}>{R(x + ROOM_W - 16 + dx, y + 14 + dy, 1, 1, "#3a2a20")}</g>)}
+      {R(x + ROOM_W - 16, y + 9, 1, 6, "#3a2a20")}
+      {R(x + ROOM_W - 16, y + 14, 5, 1, "#c0392b", "px-hand")}
       {/* 房间名牌 */}
-      <rect x={x + 60} y={y + 6} width={72} height={16} fill="#3a2a20" />
-      <rect x={x + 62} y={y + 8} width={68} height={12} fill="#fff8e7" />
+      {R(x + 60, y + 6, 72, 16, "#3a2a20")}
+      {R(x + 62, y + 8, 68, 12, "#fff8e7")}
       <text x={x + 96} y={y + 17.5} textAnchor="middle" fontSize={9} fill="#3a2a20" className="px-font" fontWeight={700}>
         {room.name}
       </text>
       {/* 边框墙 */}
       <rect x={x} y={y} width={ROOM_W} height={ROOM_H} fill="none" stroke="#5e3b20" strokeWidth={3} />
       {/* 门 */}
-      <rect x={x + ROOM_W / 2 - 12} y={y + ROOM_H - 3} width={24} height={4} fill={f1} />
+      {R(x + ROOM_W / 2 - 12, y + ROOM_H - 3, 24, 4, f1)}
 
       {/* 装饰 */}
-      {studio && (
+      {studio ? (
         <g>
-          <OnAir x={x + 136} y={y + 9} />
-          <Softbox x={x + 6} y={y + 40} />
-          <Softbox x={x + ROOM_W - 30} y={y + 40} />
-          <PhoneTripod x={x + 12} y={y + ROOM_H - 40} />
-          <Camera x={x + ROOM_W - 52} y={y + ROOM_H - 30} />
-        </g>
-      )}
-      {studio ? null : farm ? (
-        <g>
-          <FarmPlot x={x + 8} y={y + 40} />
-          <WateringCan x={x + 14} y={y + 80} />
-          <Fence x={x + 136} y={y + 38} n={5} />
-          <Sunflower x={x + 140} y={y + 58} />
-          <Sunflower x={x + 172} y={y + 62} />
-          <HayBale x={x + ROOM_W - 34} y={y + ROOM_H - 22} />
-          <Chicken x={x + 10} y={y + ROOM_H - 18} w={44} />
-          <Chicken x={x + 140} y={y + 100} w={30} />
+          <OnAir x={x + 136} y={y + 8} />
+          <Camera x={x + 12} y={y + 104} />
+          <Softbox x={x + ROOM_W - 34} y={y + 104} />
+          <RingLight x={x + 132} y={y + 108} />
         </g>
       ) : (
         <>
-          <Plant x={x + 6} y={y + ROOM_H - 26} />
+          <Plant x={x + 5} y={y + ROOM_H - 24} />
           {room.name === "出镜顾问" ? (
-            <Camera x={x + ROOM_W - 52} y={y + ROOM_H - 30} />
+            <>
+              <Camera x={x + ROOM_W - 48} y={y + ROOM_H - 44} />
+              <Softbox x={x + 28} y={y + ROOM_H - 44} />
+            </>
           ) : room.name === "销售部" ? (
-            <ChartBoard x={x + ROOM_W - 46} y={y + ROOM_H - 40} />
+            <ChartBoard x={x + ROOM_W - 46} y={y + ROOM_H - 42} />
           ) : room.name === "财务部" ? (
-            <Cabinet x={x + ROOM_W - 44} y={y + ROOM_H - 32} />
+            <Cabinet x={x + ROOM_W - 40} y={y + ROOM_H - 38} />
           ) : room.name === "茶水间" ? (
             <Pantry x={x + 30} y={y + 62} />
           ) : room.name === "会议室" ? (
             <MeetingTable x={x + 40} y={y + 62} />
           ) : (
-            <Shelf x={x + ROOM_W - 34} y={y + ROOM_H - 28} />
+            <Shelf x={x + ROOM_W - 34} y={y + ROOM_H - 34} />
           )}
         </>
       )}
 
-      {slots.map((s, si) => {
-        const sx = cx;
-        cx += s.w + 8;
-        const seat = s.people[0]?.seat;
-        if (seat) {
-          const p = s.people[0];
-          return (
-            <g key={si} className="px-person cursor-pointer" onClick={() => router.push(p.href)} onMouseEnter={() => onHover(p)} onMouseLeave={onLeave}>
-              <Chair x={sx + 16} y={deskY - 22} />
-              <Desk x={sx} y={deskY} w={s.w} on={false} />
-              <Board x={sx + 6} y={deskY - 50} label="招聘中" />
-              <PixelLabel x={sx + s.w / 2} y={deskY + 34} text={p.name} />
-            </g>
-          );
-        }
-        const on = s.people.some((p) => p.mood === "work" || p.mood === "happy");
-        const n = s.people.length;
-        return (
-          <g key={si}>
-            {s.people.map((p, pi) => (
-              <Chair key={"c" + p.key} x={sx + (s.w / n) * pi + s.w / n / 2 - 10 + (n === 1 ? 8 : 0)} y={deskY - 22} />
-            ))}
-            {s.people.map((p, pi) => {
-              const px = sx + (s.w / n) * pi + s.w / n / 2 - 12 + (n === 1 ? 8 : 0);
-              const py = deskY - 30;
-              return (
-                <g
-                  key={p.key}
-                  className="px-person cursor-pointer"
-                  onClick={() => (p.external ? window.open(p.href, "_blank") : router.push(p.href))}
-                  onMouseEnter={() => onHover(p)}
-                  onMouseLeave={onLeave}
-                >
-                  <rect x={px - 6} y={py - 18} width={36} height={70} fill="transparent" />
-                  <Person p={p} x={px} y={py} />
-                  <Bubble p={p} x={px + 12} y={py - 6} />
-                  <g className="px-cursor">
-                    <path d={`M${px + 7} ${py - 22}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
-                  </g>
-                  <PixelLabel x={px + 12} y={deskY + 34} text={p.name} />
-                </g>
-              );
-            })}
-            <Desk x={sx} y={deskY} w={s.w} on={on} imac={n > 1 && !macDev} bare={n > 1 && !!macDev} />
-            {n > 1 && macDev && (
-              // 共用的那台 MAC 自己是一个角色：坐在两个人中间的桌上
-              <g
-                className="px-person cursor-pointer"
-                onClick={() => router.push(macDev.href)}
-                onMouseEnter={() => onHover(macDev)}
-                onMouseLeave={onLeave}
-              >
-                <MacFace x={sx + s.w / 2 - 15} y={deskY - 26} mood={macDev.mood} />
-                <Bubble p={macDev} x={sx + s.w / 2 + 2} y={deskY - 30} />
-                <g className="px-cursor">
-                  <path d={`M${sx + s.w / 2 - 5} ${deskY - 40}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
-                </g>
-                <PixelLabel x={sx + s.w / 2} y={deskY + 12} text="MAC" />
+      {studio ? (
+        <StudioSeats room={room} x={x} y={y} onHover={onHover} onLeave={onLeave} />
+      ) : (
+        slots.map((p, i) => {
+          const sx = startX + i * (slotW + 8);
+          if (p.seat)
+            return (
+              <g key={p.key} className="px-person cursor-pointer" onClick={() => router.push(p.href)} onMouseEnter={() => onHover(p)} onMouseLeave={onLeave}>
+                <Chair x={sx + 34} y={deskY - 26} />
+                <Desk x={sx} y={deskY} w={slotW} on={false} />
+                <Board x={sx + 22} y={deskY - 42} label="招聘中" />
+                <PixelLabel x={sx + slotW / 2} y={deskY + 14} text={p.name} />
               </g>
-            )}
-            {n > 1 && !macDev && (
-              <text x={sx + s.w / 2} y={deskY + 11} textAnchor="middle" fontSize={6} fill="#fff8e7" className="px-font">
-                共用一台 Mac
-              </text>
-            )}
-          </g>
-        );
-      })}
+            );
+          return <Worker key={p.key} p={p} x={sx} deskY={deskY} w={slotW} on={p.mood === "work" || p.mood === "happy"} screen="#c7f0c0" onHover={onHover} onLeave={onLeave} />;
+        })
+      )}
     </g>
   );
 }
@@ -780,29 +874,47 @@ function Bubble({ p, x, y }: { p: PixelPerson; x: number; y: number }) {
 function Hall({ x, y, w }: { x: number; y: number; w: number }) {
   const tiles: JSX.Element[] = [];
   for (let tx = 0; tx < w / TILE; tx++)
-    for (let ty = 0; ty < 2; ty++) tiles.push(<rect key={`${tx}-${ty}`} x={x + tx * TILE} y={y + ty * TILE} width={TILE} height={TILE} fill={(tx + ty) % 2 ? "#cfc6b6" : "#c4baa8"} />);
+    for (let ty = 0; ty < 2; ty++)
+      tiles.push(
+        <g key={`${tx}-${ty}`}>
+          {R(x + tx * TILE, y + ty * TILE, TILE, TILE, (tx + ty) % 2 ? "#cfc6b6" : "#c4baa8")}
+          {R(x + tx * TILE, y + ty * TILE, TILE, 1, "#ded6c8")}
+        </g>,
+      );
+  const pal = { O: "#3a2a20", C: "#f0a64a", c: "#d98a35", W: "#fff4e0", E: "#1a1420", P: "#f2a0a0" };
   return (
     <g>
       {tiles}
-      <rect x={x} y={y + 14} width={w} height={4} fill="#b9ae99" />
       {/* 办公室的猫：在走廊里走来走去 */}
       <g className="px-cat-walk" style={{ ["--hall" as any]: `${w - 30}px` }}>
         <g className="px-cat-flip">
-          <rect x={x + 4} y={y + 12} width={14} height={8} fill="#f0a64a" />
-          <rect x={x + 14} y={y + 8} width={8} height={8} fill="#f0a64a" />
-          <rect x={x + 14} y={y + 6} width={2} height={3} fill="#f0a64a" />
-          <rect x={x + 20} y={y + 6} width={2} height={3} fill="#f0a64a" />
-          <rect x={x + 16} y={y + 11} width={1} height={1} fill="#2a1e1a" />
-          <rect x={x + 19} y={y + 11} width={1} height={1} fill="#2a1e1a" />
-          <rect x={x} y={y + 10} width={5} height={2} fill="#f0a64a" />
-          <rect x={x + 6} y={y + 20} width={2} height={3} fill="#c97f2e" className="px-frame-a" />
-          <rect x={x + 14} y={y + 20} width={2} height={3} fill="#c97f2e" className="px-frame-b" />
-          <rect x={x + 9} y={y + 13} width={6} height={2} fill="#d98a35" />
+          <Pixels
+            x={x + 2}
+            y={y + 7}
+            pal={pal}
+            rows={[
+              "................O...O.",
+              "O...............OCOOCO",
+              "CO.............OCCCCCO",
+              ".CO............OCECECO",
+              ".COOOOOOOOOOOOOOCCPCCO",
+              "..OCcCCcCCcCCcCCCWWWO.",
+              "..OCCCCCCCCCCCCCWWWO..",
+              "..OCCcCCcCCcCCCWWWCO..",
+              "...OCCCCCCCCCCCCCCO...",
+            ]}
+          />
+          <g className="px-frame-a">{R(x + 6, y + 16, 3, 4, "#d98a35")}{R(x + 17, y + 16, 3, 4, "#d98a35")}</g>
+          <g className="px-frame-b">{R(x + 9, y + 16, 3, 4, "#d98a35")}{R(x + 14, y + 16, 3, 4, "#d98a35")}</g>
         </g>
       </g>
       {/* 饮水机 */}
-      <rect x={x + w - 22} y={y + 2} width={12} height={26} fill="#e8eef5" stroke="#8090a0" strokeWidth={1} />
-      <rect x={x + w - 20} y={y - 6} width={8} height={9} fill="#8fd0ff" />
+      {R(x + w - 24, y + 10, 16, 20, "#e8eef5")}
+      {R(x + w - 24, y + 10, 16, 2, "#ffffff")}
+      {R(x + w - 21, y + 14, 3, 3, "#3b82f6")}
+      {R(x + w - 14, y + 14, 3, 3, "#ef4444")}
+      {R(x + w - 22, y - 8, 12, 18, "#8fd0ff")}
+      {R(x + w - 20, y - 6, 3, 13, "#c8e9ff")}
     </g>
   );
 }
@@ -810,123 +922,38 @@ function Hall({ x, y, w }: { x: number; y: number; w: number }) {
 
 // ---- Claude 巡视员（2026-11-03 Wallace：「把 Claude 的小人也加进去，到处走然后做一个巡视的动作，
 // 鼠标点小人就显示，需要发布指令就到 Claude」）。原创造型：陶土色兜帽 + 记录板，不用任何官方标志。----
-const CLAUDE_SPRITE = [
-  "..OOOOOOOO..",
-  ".OKKKKKKKKO.",
-  "OKKKKKKKKKKO",
-  "OKKSSSSSSKKO",
-  "OKSSSSSSSSKO",
-  "OSSESSSSESSO",
-  "OSSESSSSESSO",
-  "OSBSSSSSSBSO",
-  ".OSSSMMSSSO.",
-  "..OOSSSSOO..",
-  ".OKKKKKKKKO.",
-  "OKKKKKWWWWKO",
-  "OKKKKKWLLWKO",
-  "OSKKKKWWWWSO",
-];
-const CLAUDE_PAL = { O: "#2a1e1a", K: "#d4704f", S: "#fbe3cf", E: "#1a1420", B: "#f2a08a", M: "#a8483a", W: "#fffdf4", L: "#8a8a99" };
+const CLAUDE_LOOK: Look = { hair: "#d4704f", skin: "#fbe3cf", shirt: "#d4704f", dark: "#a8483a", style: HOOD };
 
 function ClaudePatrol({ x, y, w, onClick }: { x: number; y: number; w: number; onClick: () => void }) {
+  const pal = { ...lookPal(CLAUDE_LOOK), K: "#a8483a" };
   return (
-    <g className="px-claude-walk cursor-pointer" style={{ ["--hall" as any]: `${w - 40}px` }} onClick={onClick}>
+    <g className="px-person px-claude-walk cursor-pointer" style={{ ["--hall" as any]: `${w - 40}px` }} onClick={onClick}>
       <rect x={x} y={y - 14} width={30} height={50} fill="transparent" />
       <g className="px-claude-flip">
         <g className="px-bob">
-          <Pixels rows={CLAUDE_SPRITE} pal={CLAUDE_PAL} x={x + 4} y={y - 12} />
-          <rect x={x + 7} y={y + 16} width={4} height={4} fill="#2a1e1a" className="px-frame-a" />
-          <rect x={x + 17} y={y + 16} width={4} height={4} fill="#2a1e1a" className="px-frame-b" />
-          <rect x={x + 7} y={y + 16} width={4} height={2} fill="#2a1e1a" className="px-frame-b" />
-          <rect x={x + 17} y={y + 16} width={4} height={2} fill="#2a1e1a" className="px-frame-a" />
+          <Pixels rows={HEAD} pal={pal} x={x + 4} y={y - 14} />
+          <Pixels rows={HOOD} pal={pal} x={x + 4} y={y - 14} />
+          {/* 记录板 */}
+          {R(x + 15, y + 4, 8, 9, "#8a5a33")}
+          {R(x + 16, y + 5, 6, 7, "#fffdf4")}
+          {R(x + 17, y + 7, 4, 1, "#8a8a99")}
+          {R(x + 17, y + 9, 4, 1, "#8a8a99")}
+          {R(x + 18, y + 3, 2, 2, "#c9ccd8")}
+          {/* 裤子 + 迈步的腿 */}
+          {R(x + 7, y + 12, 14, 4, "#3d4256")}
+          <g className="px-frame-a">{R(x + 7, y + 16, 5, 6, "#3d4256")}{R(x + 16, y + 16, 5, 3, "#3d4256")}{R(x + 6, y + 21, 7, 2, "#2a1e1a")}{R(x + 15, y + 19, 7, 2, "#2a1e1a")}</g>
+          <g className="px-frame-b">{R(x + 7, y + 16, 5, 3, "#3d4256")}{R(x + 16, y + 16, 5, 6, "#3d4256")}{R(x + 6, y + 19, 7, 2, "#2a1e1a")}{R(x + 15, y + 21, 7, 2, "#2a1e1a")}</g>
         </g>
       </g>
       {/* 巡视：停下来的时候头上冒「✓」 */}
       <g className="px-claude-check">
-        <rect x={x + 18} y={y - 30} width={14} height={13} fill="#fff" stroke="#2a1e1a" strokeWidth={1.5} />
-        <path d={`M${x + 21} ${y - 24}l3 3l5 -6`} stroke="#2f9e57" strokeWidth={2} fill="none" />
+        <rect x={x + 20} y={y - 30} width={14} height={13} fill="#fff" stroke="#2a1e1a" strokeWidth={1.5} />
+        <path d={`M${x + 23} ${y - 24}l3 3l5 -6`} stroke="#2f9e57" strokeWidth={2} fill="none" />
       </g>
-      <PixelLabel x={x + 16} y={y + 30} text="Claude" />
+      <g className="px-cursor"><PixelLabel x={x + 14} y={y - 18} text="Claude" /></g>
     </g>
   );
 }
-
-
-// ---- 市场部单独一间大办公室（2026-11-05 Wallace：「Marketing 的办公室要稍微大一点……设置 Claude 在办公，然后市场部办公室隐藏，
-// 显示一个箭头，点一下就进入市场部办公室，要求逐渐变成黑屏，再从黑屏渐显的动画」）。地图上原来市场部的格子 = Claude 的办公室 + 一扇门。----
-const BIG_ROOM = "市场部";
-
-function ClaudeOffice({ x, y, inside, onEnter, onClaude }: { x: number; y: number; inside: PixelRoom; onEnter: () => void; onClaude: () => void }) {
-  const tiles: JSX.Element[] = [];
-  for (let ty = 2; ty < 9; ty++)
-    for (let tx = 0; tx < 12; tx++)
-      tiles.push(<rect key={`${tx}-${ty}`} x={x + tx * TILE} y={y + ty * TILE} width={TILE} height={TILE} fill={(tx + ty) % 2 ? "#f6e3d6" : "#efd6c6"} />);
-  const alert = inside.people.some((p) => p.mood === "alert");
-  const deskY = y + 4 * TILE + 26;
-  return (
-    <g>
-      {tiles}
-      <rect x={x} y={y} width={ROOM_W} height={2 * TILE} fill="#b86a4b" />
-      <rect x={x} y={y + 2 * TILE - 4} width={ROOM_W} height={4} fill="#8a4a33" />
-      <rect x={x + 20} y={y + 6} width={30} height={18} fill="#9fd6ff" stroke="#f3efe6" strokeWidth={2} />
-      <rect x={x + 34} y={y + 6} width={2} height={18} fill="#f3efe6" />
-      <rect x={x + 60} y={y + 6} width={72} height={16} fill="#3a2a20" />
-      <rect x={x + 62} y={y + 8} width={68} height={12} fill="#fff8e7" />
-      <text x={x + 96} y={y + 17.5} textAnchor="middle" fontSize={9} fill="#3a2a20" className="px-font" fontWeight={700}>
-        Claude 办公室
-      </text>
-      <rect x={x} y={y} width={ROOM_W} height={ROOM_H} fill="none" stroke="#5e3b20" strokeWidth={3} />
-      <Plant x={x + 6} y={y + ROOM_H - 26} />
-
-      {/* Claude 坐在桌前办公（点它 = 去 Claude 发布指令） */}
-      <g className="px-person cursor-pointer" onClick={onClaude}>
-        <Chair x={x + 36} y={deskY - 22} />
-        <g className="px-bob">
-          <Pixels rows={CLAUDE_SPRITE.slice(0, 11)} pal={CLAUDE_PAL} x={x + 34} y={deskY - 30} />
-          <Pixels rows={["OSKKKKKKKKSO"]} pal={CLAUDE_PAL} x={x + 34} y={deskY - 8} className="px-frame-a" />
-          <Pixels rows={["OKKSSKKSSKKO"]} pal={CLAUDE_PAL} x={x + 34} y={deskY - 8} className="px-frame-b" />
-        </g>
-        <Desk x={x + 18} y={deskY} w={60} on={true} />
-        <g className="px-cursor">
-          <path d={`M${x + 41} ${deskY - 52}h10l-5 6z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1} />
-        </g>
-        <PixelLabel x={x + 46} y={deskY + 34} text="Claude" />
-      </g>
-
-      {/* 门：通往市场部大办公室 */}
-      <g className="px-person cursor-pointer" onClick={onEnter}>
-        <rect x={x + 120} y={y + 36} width={52} height={78} fill="transparent" />
-        <rect x={x + 128} y={y + 44} width={36} height={60} fill="#6b4426" stroke="#3e2716" strokeWidth={2} />
-        <rect x={x + 132} y={y + 48} width={28} height={24} fill="#8a5a33" />
-        <rect x={x + 132} y={y + 76} width={28} height={24} fill="#8a5a33" />
-        <circle cx={x + 157} cy={y + 76} r={2} fill="#f2c230" />
-        <rect x={x + 122} y={y + 32} width={48} height={12} fill="#2f8f4e" stroke="#1f5e33" strokeWidth={1} />
-        <text x={x + 146} y={y + 41} textAnchor="middle" fontSize={8} fill="#fff" className="px-font" fontWeight={700}>
-          {BIG_ROOM}
-        </text>
-        <g className="px-arrow">
-          <path d={`M${x + 136} ${y + 112}h12v-5l9 9l-9 9v-5h-12z`} fill="#ffdf3d" stroke="#2a1e1a" strokeWidth={1.5} />
-        </g>
-        {alert && (
-          <g className="px-bang">
-            <rect x={x + 168} y={y + 40} width={10} height={13} fill="#fff" stroke="#2a1e1a" strokeWidth={1.5} />
-            <rect x={x + 172} y={y + 42} width={2} height={6} fill="#e5383b" />
-            <rect x={x + 172} y={y + 50} width={2} height={2} fill="#e5383b" />
-          </g>
-        )}
-        <text x={x + 146} y={y + 140} textAnchor="middle" fontSize={7} fill="#3a2a20" className="px-font">
-          {inside.people.length} 位同事在里面
-        </text>
-      </g>
-    </g>
-  );
-}
-
-/**
- * 进门后的市场部大办公室（2026-11-06 起社媒运营并进市场部）：两间打通——左边拍摄工作室（Mark、Chase、MAC），
- * 右边农场（Leo、Ivy 等），中间墙上开门，顶上一块大招牌。左上角回去。
- */
-const STUDIO_KEYS = new Set(["mark", "mac", "macmini"]);  // 左：策划 Mark + 发布 Chase + MAC；右：剪辑 Leo + 检查 Ivy
 
 // ---- 市场部流水线（2026-11-06 Wallace：「做一个流水线的动画吧，每个人的职责都以动画形式呈现」）----
 // 一条传送带：Mark 写稿 → IP 拍摄 → Drive → Leo 剪辑 → Chase 发布 → Ivy 检查。一件「货」沿着传送带走，
@@ -1063,44 +1090,18 @@ function Conveyor({ x, y, w, people, shootStuck, driveStuck }: { x: number; y: n
   );
 }
 
-function BigRoom({ room, onHover, onLeave }: { room: PixelRoom; onHover: (p: PixelPerson) => void; onLeave: () => void }) {
-  const studio: PixelRoom = { name: "社媒运营区", people: room.people.filter((p) => STUDIO_KEYS.has(p.key)) };
-  const farm: PixelRoom = { name: "剪辑 · 检查区", people: room.people.filter((p) => !STUDIO_KEYS.has(p.key)) };
-  const W = ROOM_W * 2 + 16;
-  return (
-    <svg viewBox={`0 0 ${W} ${ROOM_H + 90}`} className="w-full h-auto block" shapeRendering="crispEdges" role="img" aria-label="市场部办公室">
-      <rect width={W} height={ROOM_H + 90} fill="#7a5a3f" />
-      <rect x={W / 2 - 110} y={3} width={220} height={18} fill="#3a2a20" />
-      <rect x={W / 2 - 108} y={5} width={216} height={14} fill="#fff8e7" />
-      <text x={W / 2} y={15.5} textAnchor="middle" fontSize={10} fill="#3a2a20" className="px-font" fontWeight={700}>
-        市场部 · 策划 → 剪辑 → 发布 → 检查
-      </text>
-      <Room room={studio} x={8} y={24} onHover={onHover} onLeave={onLeave} />
-      <Room room={farm} x={8 + ROOM_W} y={24} onHover={onHover} onLeave={onLeave} />
-      {/* 两间打通：中间墙上开一个门洞 */}
-      <rect x={8 + ROOM_W - 3} y={24 + 4 * TILE} width={6} height={3 * TILE} fill="#cdb79a" />
-      <Conveyor x={8} y={24 + ROOM_H + 6} w={W - 16} people={room.people} shootStuck={room.shootStuck} driveStuck={room.driveStuck} />
-      {room.driveStuck && (
-        <text x={8 + 20 + (2 * (W - 56)) / 5} y={24 + ROOM_H + 66} textAnchor="middle" fontSize={6} fill="#ffe3e3" className="px-font">
-          {room.driveStuck}
-        </text>
-      )}
-      {room.shootStuck && (
-        <text x={8 + 20 + (W - 56) / 5} y={24 + ROOM_H + 66} textAnchor="middle" fontSize={6} fill="#ffe3e3" className="px-font">
-          {room.shootStuck}
-        </text>
-      )}
-    </svg>
-  );
-}
+const BELT_H = 74;
 
-function Map({ rooms: real, cols, onHover, onLeave, onClaude, onEnter }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void; onClaude: () => void; onEnter: () => void }) {
+function Map({ rooms: real, cols, onHover, onLeave, onClaude }: { rooms: PixelRoom[]; cols: number; onHover: (p: PixelPerson) => void; onLeave: () => void; onClaude: () => void }) {
   // 最后一排没坐满就补一间会议室（agent 请求开会就是约在这里）
   const rooms = [...real];
   for (const filler of ["会议室", "茶水间"]) if (rooms.length % cols) rooms.push({ name: filler, people: [] });
   const rows = Math.ceil(rooms.length / cols);
   const W = cols * ROOM_W + (cols + 1) * 8;
-  const H = rows * ROOM_H + (rows - 1) * HALL + 16;
+  const H0 = rows * ROOM_H + (rows - 1) * HALL + 16;
+  const mkt = real.find((r) => r.name === BIG_ROOM);
+  const H = H0 + (mkt ? BELT_H : 0);
+  const w = W - 16;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" shapeRendering="crispEdges" role="img" aria-label="WWFS办公室像素地图">
       <rect width={W} height={H} fill="#7a5a3f" />
@@ -1110,28 +1111,37 @@ function Map({ rooms: real, cols, onHover, onLeave, onClaude, onEnter }: { rooms
       {rooms.map((room, i) => {
         const c = i % cols;
         const r = Math.floor(i / cols);
-        const rx = 8 + c * (ROOM_W + 8), ry = 8 + r * (ROOM_H + HALL);
-        if (room.name === BIG_ROOM) return <ClaudeOffice key={room.name} x={rx} y={ry} inside={room} onEnter={onEnter} onClaude={onClaude} />;
-        return <Room key={room.name} room={room} x={rx} y={ry} onHover={onHover} onLeave={onLeave} />;
+        return <Room key={room.name} room={room} x={8 + c * (ROOM_W + 8)} y={8 + r * (ROOM_H + HALL)} onHover={onHover} onLeave={onLeave} />;
       })}
-      {rows > 1 && <ClaudePatrol x={14} y={8 + ROOM_H + 6} w={W - 28} onClick={onClaude} />}
+      {rows > 1 && <ClaudePatrol x={14} y={8 + ROOM_H + 10} w={W - 28} onClick={onClaude} />}
+      {mkt && (
+        <g>
+          <Conveyor x={8} y={H0 + 8} w={w} people={mkt.people} shootStuck={mkt.shootStuck} driveStuck={mkt.driveStuck} />
+          {mkt.driveStuck && (
+            <text x={8 + 20 + (2 * (w - 40)) / 5} y={H0 + 68} textAnchor="middle" fontSize={6} fill="#ffe3e3" className="px-font">
+              {mkt.driveStuck}
+            </text>
+          )}
+          {mkt.shootStuck && (
+            <text x={8 + 20 + (w - 40) / 5} y={H0 + 68} textAnchor="middle" fontSize={6} fill="#ffe3e3" className="px-font">
+              {mkt.shootStuck}
+            </text>
+          )}
+        </g>
+      )}
     </svg>
   );
 }
 
 const CLAUDE_TEXT = "我是 Claude，正在各部门巡视：谁在岗、谁卡住了，这里都看得到。\n这里只看反馈；要给哪位同事交代事情，到 Claude 里跟我说。";
-const WELCOME_BIG = "这里是市场部。鼠标放在同事身上看他的定时任务和在干什么，点左上角「回办公室」出去。";
 const WELCOME = "欢迎来到 WWFS办公室！鼠标放在同事身上看他的定时任务和在干什么，头上有「!」就是卡住了。点一下看详细反馈。";
 
 export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
   const [who, setWho] = useState<PixelPerson | null>(null);
   const [claude, setClaude] = useState(false);
-  // 进出市场部：先 0.5 秒渐黑，换画面，再 0.5 秒渐显
-  const [view, setView] = useState<"map" | "big">("map");
-  const [dark, setDark] = useState(false);
   const full = useMemo(() => {
     if (!who && claude) return CLAUDE_TEXT;
-    if (!who) return view === "big" ? WELCOME_BIG : WELCOME;
+    if (!who) return WELCOME;
     if (who.seat) return `${who.name}：${who.title}。这个位子还空着，宣发移交的客户先放在看板「移交销售」。`;
     const lines = [`${who.name}（${who.title}${who.tags ? " · " + who.tags.replace(/,/g, "/") : ""}）· ${who.statusLabel}`];
     // 2026-11-03 Wallace：「感叹号证明卡住了，鼠标滑到这个人身上的时候，显示这个人的定时任务和周期」
@@ -1141,7 +1151,7 @@ export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
     lines.push(who.task ? `正在：${who.task}` : "手上没事。");
     if (who.unread) lines.push(`你有 ${who.unread} 条留言他还没看。`);
     return lines.join("\n");
-  }, [who, claude, view]);
+  }, [who, claude]);
   const [shown, setShown] = useState("");
   useEffect(() => {
     setShown("");
@@ -1155,41 +1165,15 @@ export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
   }, [full]);
 
   const leave = () => setWho(null);
-  const go = (to: "map" | "big") => {
-    if (dark) return;
-    setDark(true);
-    setWho(null);
-    setTimeout(() => {
-      setView(to);
-      requestAnimationFrame(() => setDark(false));
-    }, 550);
-  };
-  const big = rooms.find((r) => r.name === BIG_ROOM);
   return (
     <div className="px-office relative rounded-2xl overflow-hidden border-4 border-[#3a2a20] shadow-xl bg-[#7a5a3f]">
       <div className="relative">
-        {view === "big" && big ? (
-          <>
-            <BigRoom room={big} onHover={setWho} onLeave={leave} />
-            <button
-              type="button"
-              onClick={() => go("map")}
-              className="px-font absolute left-3 top-3 rounded border-2 border-[#2a1e1a] bg-[#ffdf3d] px-3 py-1 text-sm text-[#2a1e1a] shadow hover:brightness-105"
-            >
-              ◀ 回办公室
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="hidden md:block">
-              <Map rooms={rooms} cols={3} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} onEnter={() => go("big")} />
-            </div>
-            <div className="md:hidden">
-              <Map rooms={rooms} cols={2} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} onEnter={() => go("big")} />
-            </div>
-          </>
-        )}
-        <div className={"pointer-events-none absolute inset-0 bg-black transition-opacity duration-500 " + (dark ? "opacity-100" : "opacity-0")} />
+        <div className="hidden md:block">
+          <Map rooms={rooms} cols={3} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} />
+        </div>
+        <div className="md:hidden">
+          <Map rooms={rooms} cols={2} onHover={setWho} onLeave={leave} onClaude={() => setClaude(true)} />
+        </div>
       </div>
       {/* GBA 式对话框 */}
       <div className="bg-[#3a2a20] p-2">
@@ -1216,9 +1200,9 @@ export default function PixelOffice({ rooms }: { rooms: PixelRoom[] }) {
 export function PixelPortrait({ who, name, mood, size = 96 }: { who: string; name: string; mood: PixelPerson["mood"]; size?: number }) {
   const p: PixelPerson = { key: who, name, title: "", tags: null, href: "", mood, statusLabel: "", task: null, unread: 0 };
   return (
-    <svg viewBox="-4 -22 36 52" width={size} height={(size * 52) / 36} shapeRendering="crispEdges" className="px-office shrink-0" aria-hidden>
+    <svg viewBox="-3 -14 30 40" width={size} height={(size * 40) / 30} shapeRendering="crispEdges" className="px-office shrink-0" aria-hidden>
       <Person p={p} x={0} y={0} />
-      <Bubble p={p} x={12} y={-6} />
+      <Bubble p={p} x={6} y={2} />
     </svg>
   );
 }

@@ -94,7 +94,6 @@
 .px-twinkle { animation: px-blinkon 1s steps(2) infinite; }
 .px-rec { animation: px-blinkon 1s steps(2) infinite; }
 .px-cloud { animation: px-cloud 9s steps(18) infinite alternate; }
-.px-sway { transform-origin: bottom center; animation: px-sway 3s steps(3) infinite alternate; }
 .px-cursor { opacity: 0; }
 .px-person:hover .px-cursor { opacity: 1; animation: px-bang .6s steps(2) infinite; }
 .px-person:hover .px-bob { animation-duration: .5s; }
@@ -111,12 +110,8 @@
 @keyframes px-bang { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-2px) } }
 @keyframes px-blinkon { 0%,100% { opacity: 1 } 50% { opacity: 0 } }
 @keyframes px-cloud { from { transform: translateX(0) } to { transform: translateX(16px) } }
-@keyframes px-sway { from { transform: skewX(-3deg) } to { transform: skewX(3deg) } }
 @keyframes px-walk { 0% { transform: translateX(0) } 50% { transform: translateX(var(--hall, 500px)) } 100% { transform: translateX(0) } }
 @keyframes px-flip { 0% { transform: scaleX(1) } 50% { transform: scaleX(-1) } }
-.px-chick-walk { animation: px-chick 7s steps(28) infinite; }
-.px-chick-flip { transform-origin: center; animation: px-flip 7s steps(1) infinite; }
-@keyframes px-chick { 0%,10% { transform: translateX(0) } 50%,60% { transform: translateX(var(--run, 30px)) } 100% { transform: translateX(0) } }
 .px-blinkon-slow { animation: px-blinkon 2s steps(2) infinite; }
 /* Claude 巡视：走一段、停下看一眼（冒 ✓）、再走，走到头掉头回来 */
 .px-claude-walk { animation: px-claude-walk 24s linear infinite; }
@@ -136,7 +131,5 @@
   0%, 10% { opacity: 0 } 11%, 16% { opacity: 1 } 17%, 26% { opacity: 0 } 27%, 32% { opacity: 1 } 33%, 42% { opacity: 0 }
   43%, 50% { opacity: 1 } 51%, 60% { opacity: 0 } 61%, 66% { opacity: 1 } 67%, 76% { opacity: 0 } 77%, 82% { opacity: 1 } 83%, 100% { opacity: 0 }
 }
-.px-arrow { animation: px-arrow 0.9s steps(3) infinite; }
-@keyframes px-arrow { 0%,100% { transform: translateX(0) } 50% { transform: translateX(3px) } }
 .px-belt { animation: px-belt 0.6s steps(2) infinite; }
 @keyframes px-belt { from { transform: translateX(0) } to { transform: translateX(6px) } }
