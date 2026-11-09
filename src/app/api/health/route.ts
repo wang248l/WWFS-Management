@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const ai = await loadAiLog();
-  const per = Object.fromEntries(Object.entries(ai.byAgent).map(([k, v]) => [k, { entries: v.entries.length, lastAt: v.lastAt }]));
+  const per = Object.fromEntries(Object.entries(ai.byAgent).map(([k, v]) => [k, { entries: v.entries.length, lastAt: v.lastAt, stuck: v.stuck.length }]));
   return NextResponse.json({
     ok: true,
     marketingKey: !!(await setting("MARKETING_API_KEY")),
