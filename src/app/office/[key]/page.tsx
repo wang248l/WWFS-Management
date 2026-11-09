@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { agentStatus, loadPromo, PROMO_AGENTS, PROMO_FIELDS, STATUS_LABEL } from "@/lib/office";
 import TaskBoard from "../../_components/TaskBoard";
 import NeedsYou from "../../_components/NeedsYou";
+import ResolveIssueButton from "../../_components/ResolveIssueButton";
 import ProjectLink from "./ProjectLink";
 import { loadSkills } from "@/lib/skills";
 import { loadAiLog } from "@/lib/aiLog";
@@ -111,6 +112,7 @@ export default async function Desk({ params }: { params: { key: string } }) {
                   {e.ip !== "-" && <span>{e.ip}</span>}
                   {e.platform !== "-" && <span>{e.platform}</span>}
                   <span className="ml-auto">{when(new Date(e.ts))}</span>
+                  <ResolveIssueButton id={e.id} />
                 </div>
                 <div className="font-medium text-red-900">{e.msg}</div>
                 {e.why && <div className="text-xs text-stone-600 mt-0.5">原因：{e.why}</div>}
@@ -124,7 +126,7 @@ export default async function Desk({ params }: { params: { key: string } }) {
       {aiStuck.length > 0 && (
         <section className="rise rounded-2xl border-2 border-red-200 bg-red-50/60 p-4">
           <h2 className="font-semibold">❗ 卡住了 · 来自 AI 工作日志（{aiStuck.length} 件）</h2>
-          <p className="text-xs text-stone-500 mt-0.5">同一件事最近一次是失败、24 小时内还没成功过。后面成功了会自动消失。</p>
+          <p className="text-xs text-stone-500 mt-0.5">同一件事最近一次是失败、24 小时内还没成功过。后面成功了会自动消失；已经解决的点「标记已解决」，同一个问题不再亮红。</p>
           <ul className="mt-2 space-y-2 text-sm">
             {aiStuck.map((e) => (
               <li key={e.id} className="card p-3">
@@ -133,6 +135,7 @@ export default async function Desk({ params }: { params: { key: string } }) {
                   {e.ip !== "-" && <span>{e.ip}</span>}
                   {e.platform !== "-" && <span>{e.platform}</span>}
                   <span className="ml-auto">{when(new Date(e.ts))}</span>
+                  <ResolveIssueButton id={e.id} />
                 </div>
                 <div className="mt-1 font-medium">{e.msg}</div>
                 {(e.where || e.why || e.fix) && (
@@ -245,7 +248,7 @@ export default async function Desk({ params }: { params: { key: string } }) {
           <h2 className="font-semibold">📜 {a.name} 的工作日志 · 近 48 小时</h2>
           {ai && (
             <span className="text-xs text-stone-500">
-              最近 {ai.entries.length} 条 · 失败 {ai.entries.filter((e) => e.status === "fail").length} · 来自 AI 工作日志
+              最近 {ai.entries.length} 条 · 失败 {ai.entries.filter((e) => e.status === "fail" && !e.resolved).length} · 来自 AI 工作日志
             </span>
           )}
         </div>
@@ -262,7 +265,7 @@ export default async function Desk({ params }: { params: { key: string } }) {
                 <span
                   className={
                     "absolute -left-[7px] mt-1.5 w-3 h-3 rounded-full border-2 border-white " +
-                    (e.status === "fail" ? "bg-red-500" : e.status === "run" ? "bg-blue-500" : "bg-emerald-500")
+                    (e.status === "fail" && !e.resolved ? "bg-red-500" : e.status === "run" ? "bg-blue-500" : "bg-emerald-500")
                   }
                 />
                 <div className="flex items-center gap-2 flex-wrap text-xs text-stone-500">
@@ -273,8 +276,9 @@ export default async function Desk({ params }: { params: { key: string } }) {
                   <span className={"badge " + (e.status === "fail" ? "bg-red-50 text-red-700" : e.status === "run" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700")}>
                     {e.status === "fail" ? "失败" : e.status === "run" ? "进行中" : "完成"}
                   </span>
+                  {e.resolved && <span className="badge bg-emerald-50 text-emerald-700">✓ 已解决</span>}
                 </div>
-                <div className={"text-sm mt-0.5 " + (e.status === "fail" ? "text-red-900 font-medium" : "")}>{e.msg}</div>
+                <div className={"text-sm mt-0.5 " + (e.status === "fail" && !e.resolved ? "text-red-900 font-medium" : "")}>{e.msg}</div>
                 {e.video && !e.msg.includes(e.video) && <div className="text-xs text-stone-500">📹 {e.video}</div>}
                 {(e.where || e.why || e.fix) && (
                   <div className="text-xs text-stone-600 mt-1 rounded-md bg-stone-50 px-2 py-1 space-y-0.5">

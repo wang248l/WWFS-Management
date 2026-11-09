@@ -255,3 +255,12 @@ model AiLogEntry {
 
   @@index([ts])
 }
+
+/// 老板点「标记已解决」（2026-11-08）：同一问题（sig）7 天内不再算报错
+model ResolvedIssue {
+  sig        String   @id
+  agentKey   String?
+  msg        String   @default("")
+  by         String   @default("owner")
+  resolvedAt DateTime @default(now())
+}

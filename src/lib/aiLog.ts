@@ -1,5 +1,6 @@
 import { getJson } from "./team";
 import { setting } from "./settings";
+import { createHash } from "crypto";
 import { db } from "./db";
 
 /**
@@ -13,7 +14,7 @@ import { db } from "./db";
  * ~/autocut/backtrace.py 查：从每个 IP × 平台的发布结果往回推到 发布 / 成片 / 剪辑 / 原片 / 扫描，断在哪一环就记一条
  * 「巡检」fail 进工作日志，这里照常读到，显示在 Chase 头上。
  */
-export type AiEntry = { id: string; ts: string; source: string; status: string; task: string; ip: string; platform: string; video: string; msg: string; where: string | null; why: string | null; fix: string | null };
+export type AiEntry = { id: string; ts: string; source: string; status: string; task: string; ip: string; platform: string; video: string; msg: string; where: string | null; why: string | null; fix: string | null; resolved?: boolean };
 export type AiAgentState = { lastAt: string | null; lastMsg: string | null; lastStatus: string | null; stuck: AiEntry[]; count24h: number; fail24h: number; findings?: AiEntry[]; entries: AiEntry[] };
 
 const CHASE_TASKS = new Set(["剪辑", "QC", "发布", "定时", "登录检查", "Drive上传", "巡检", "工单"]);
@@ -44,7 +45,7 @@ export function humanTodos(entries: AiEntry[]): AiEntry[] {
   const t0 = Date.parse(lastRun.ts) - 30 * 60_000;
   const seen = new Set<string>();
   return entries.filter((e) => {
-    if (!e.msg.startsWith("【需要你】") || Date.parse(e.ts) < t0 || Date.parse(e.ts) > Date.parse(lastRun.ts) + 60_000) return false;
+    if (e.resolved || !e.msg.startsWith("【需要你】") || Date.parse(e.ts) < t0 || Date.parse(e.ts) > Date.parse(lastRun.ts) + 60_000) return false;
     const k = e.msg;
     if (seen.has(k)) return false;
     seen.add(k);
@@ -52,21 +53,43 @@ export function humanTodos(entries: AiEntry[]): AiEntry[] {
   });
 }
 
+/**
+ * 「如何标记问题已经解决让他不再报错」（2026-11-08 Wallace）：点「标记已解决」按问题记一个指纹，不按某一条日志记，
+ * 所以同一个问题下次巡检再记一条也不会亮红。天数、条数、日期会变，去掉再比（「上一条是 3.5 天前」和「4.5 天前」是同一个问题）。
+ * 只管 7 天：过了 7 天还在报，多半是真的又坏了，要重新亮出来。
+ */
+const RESOLVED_DAYS = 7;
+export function issueSig(e: Pick<AiEntry, "task" | "ip" | "platform" | "video" | "msg">): string {
+  const msg = e.msg.replace("【需要你】", "").replace(/\d{4}-\d{2}-\d{2}/g, "#").replace(/\d+(\.\d+)?\s*(天|小时|分钟|条|次|%)/g, "#$2").trim();
+  return createHash("sha256").update([e.task, e.ip, e.platform, e.video, msg].join("|"), "utf8").digest("hex");
+}
+
+/** 老板的按钮和 agent 的钥匙走同一个入口：按日志 id 找到这一条，记下它的指纹。 */
+export async function resolveIssue(id: string, by: string): Promise<boolean> {
+  const e = await db.aiLogEntry.findUnique({ where: { id } });
+  if (!e) return false;
+  const sig = issueSig(e);
+  const row = { agentKey: agentForEntry({ ...e, ts: e.ts.toISOString() }), msg: e.msg.slice(0, 500), by, resolvedAt: new Date() };
+  await db.resolvedIssue.upsert({ where: { sig }, create: { sig, ...row }, update: row });
+  return true;
+}
+
 export async function loadAiLog(): Promise<{ ok: boolean; byAgent: Record<string, AiAgentState>; human: AiEntry[] }> {
+  const resolved = new Map((await db.resolvedIssue.findMany().catch(() => [])).map((r) => [r.sig, r.resolvedAt.getTime()]));
   // 优先读 Mac 直接推到办公室的日志（2026-11-06 配对以后）；48 小时里一条都没有，再去 Marketing 拉
   const local = await db.aiLogEntry
     .findMany({ where: { ts: { gte: new Date(Date.now() - 48 * 3600_000) } }, orderBy: { ts: "desc" }, take: 2000 })
     .catch(() => []);
-  if (local.length) return digest(local.map((e) => ({ ...e, ts: e.ts.toISOString() })));
+  if (local.length) return digest(local.map((e) => ({ ...e, ts: e.ts.toISOString() })), resolved);
   const base = process.env.MARKETING_API_BASE || "https://marketing.wallacewang.ca";
   const key = await setting("MARKETING_API_KEY");
   if (!base || !key) return { ok: false, byAgent: {}, human: [] };
   const r = await getJson<{ entries: AiEntry[] }>(`${base.replace(/\/$/, "")}/api/agent/ai-log?hours=48&limit=2000`, { authorization: `Bearer ${key}` });
   if (!r.ok) return { ok: false, byAgent: {}, human: [] };
-  return digest(r.data.entries);
+  return digest(r.data.entries, resolved);
 }
 
-function digest(all: AiEntry[]): { ok: boolean; byAgent: Record<string, AiAgentState>; human: AiEntry[] } {
+function digest(all: AiEntry[], resolved: Map<string, number>): { ok: boolean; byAgent: Record<string, AiAgentState>; human: AiEntry[] } {
   const r = { data: { entries: all } };
   const byAgent: Record<string, AiAgentState> = {};
   const latestByKey: Record<string, Record<string, AiEntry>> = {};
@@ -74,6 +97,8 @@ function digest(all: AiEntry[]): { ok: boolean; byAgent: Record<string, AiAgentS
   // 2026-11-06：「Ben 和 Ishan 先删掉吧，过不了实习期也不算是我们的员工」——他们的记录不再算到任何人头上
   r.data.entries = r.data.entries.filter((e) => !["Ben", "Ishan"].includes((e.ip || "").split(" ")[0]));
   for (const e of r.data.entries) {
+    const at = e.status === "fail" ? resolved.get(issueSig(e)) : undefined;
+    e.resolved = at !== undefined && Date.parse(e.ts) <= at + RESOLVED_DAYS * 86400_000;
     // 检查员 Ivy（2026-11-05）：ivy.py（第三方看公开页）和 backtrace.py（倒推）每跑一次记一条「其他 ok」= 她的打卡；她记的「巡检 fail」= 查出的问题，
     // 断点照常算在负责的人（Chase）头上，这里另存一份给她的工位看
     // MAC（2026-11-05「MAC 设备要单独成为一个角色」）：日志全是这台 Mac 写的，最新一条就是它最后一次活着的时间
@@ -84,21 +109,21 @@ function digest(all: AiEntry[]): { ok: boolean; byAgent: Record<string, AiAgentS
     if (e.source.includes("backtrace") || e.source.includes("ivy")) {
       const iv = (byAgent.inspector ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0, findings: [], entries: [] });
       if (e.task === "其他" && !iv.lastAt) Object.assign(iv, { lastAt: e.ts, lastMsg: e.msg, lastStatus: "ok" });
-      if (e.status === "fail" && Date.parse(e.ts) >= day) iv.findings!.push(e);
+      if (e.status === "fail" && !e.resolved && Date.parse(e.ts) >= day) iv.findings!.push(e);
       if (iv.entries.length < 150) iv.entries.push(e);
     }
     // entries come newest first
     const who = agentForEntry(e);
     if (!who || who === "macmini") continue; // MAC 上面已经收了所有条目
     const s = (byAgent[who] ||= { lastAt: null, lastMsg: null, lastStatus: null, stuck: [], count24h: 0, fail24h: 0, entries: [] });
-    if (!s.lastAt) Object.assign(s, { lastAt: e.ts, lastMsg: e.msg, lastStatus: e.status });
+    if (!s.lastAt) Object.assign(s, { lastAt: e.ts, lastMsg: e.msg, lastStatus: e.resolved ? "ok" : e.status });
     if (s.entries.length < 150) s.entries.push(e);
     const t = Date.parse(e.ts);
     if (t >= day) {
       s.count24h++;
-      if (e.status === "fail") s.fail24h++;
+      if (e.status === "fail" && !e.resolved) s.fail24h++;
     }
-    if (e.status === "run") continue;
+    if (e.status === "run" || e.resolved) continue;
     const k = `${e.task}|${e.ip}|${e.platform}`;
     const m = (latestByKey[who] ||= {});
     if (!m[k]) m[k] = e;

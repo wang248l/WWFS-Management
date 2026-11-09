@@ -5,6 +5,7 @@ import { stuckLine } from "@/lib/aiLog";
 import CountUp from "./_components/CountUp";
 import Sparkbars from "./_components/Sparkbars";
 import NeedsYou from "./_components/NeedsYou";
+import ResolveIssueButton from "./_components/ResolveIssueButton";
 import PixelOffice, { type PixelRoom } from "./_components/PixelOffice";
 
 export const dynamic = "force-dynamic";
@@ -155,9 +156,12 @@ export default async function Lobby() {
           </h2>
           <ul className="mt-3 space-y-2">
             {human.map((e) => (
-              <li key={e.id} className="card p-3 text-sm">
-                <div className="font-medium">{e.msg.replace("【需要你】", "")}</div>
-                {e.fix && <div className="text-xs text-emerald-800 mt-1">✅ 解决办法：{e.fix}</div>}
+              <li key={e.id} className="card p-3 text-sm flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{e.msg.replace("【需要你】", "")}</div>
+                  {e.fix && <div className="text-xs text-emerald-800 mt-1">✅ 解决办法：{e.fix}</div>}
+                </div>
+                <ResolveIssueButton id={e.id} />
               </li>
             ))}
           </ul>
