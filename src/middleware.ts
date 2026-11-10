@@ -9,7 +9,7 @@ const MGMT_COOKIE = "wwfs_management_session";
 // month-end Claude scheduled task — no session cookie available there.
 // /no-access is the friendly "你没权限" screen for authenticated-but-unauthorised
 // users; it must be public or the rewrite below would loop.
-const PUBLIC_PATHS = ["/login", "/api/login", "/api/ingest", "/api/agents/run", "/api/agents/inbox", "/api/agents/reply", "/api/agents/task", "/api/agents/metrics", "/api/agents/log", "/api/agents/resolve", "/api/pair", "/api/health", "/no-access"];
+const PUBLIC_PATHS = ["/login", "/api/login", "/api/ingest", "/api/agents/run", "/api/agents/inbox", "/api/agents/reply", "/api/agents/task", "/api/agents/metrics", "/api/agents/log", "/api/agents/board", "/api/agents/resolve", "/api/pair", "/api/health", "/no-access"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
