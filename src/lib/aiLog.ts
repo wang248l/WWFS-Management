@@ -96,9 +96,19 @@ function digest(all: AiEntry[], resolved: Map<string, number>): { ok: boolean; b
   const day = Date.now() - 86400_000;
   // 2026-11-06：「Ben 和 Ishan 先删掉吧，过不了实习期也不算是我们的员工」——他们的记录不再算到任何人头上
   r.data.entries = r.data.entries.filter((e) => !["Ben", "Ishan"].includes((e.ip || "").split(" ")[0]));
+  // 2026-11-11 Wallace「Ivy 的每日巡检还是有很多报错」：Ivy 的问题原来按 24 小时全算，上一轮巡检的老问题（包括已经修掉的误报）
+  // 要挂满一天。改为：ivy.py 每轮都把还在的问题重新记一遍，所以只认她最近一轮；backtrace.py 同一个断点一天只记一次，
+  // 所以只有它最近一次打卡说「没有断的环」时，才把它更早的断点当作已经好了。
+  const ivyRun = r.data.entries.find((e) => e.source.includes("ivy") && e.task === "其他");
+  const ivyFrom = ivyRun ? Date.parse(ivyRun.ts) - 30 * 60_000 : -Infinity;
+  const btRun = r.data.entries.find((e) => e.source.includes("backtrace") && e.task === "其他");
+  const btClear = btRun && btRun.msg.includes("没有断的环") ? Date.parse(btRun.ts) : -Infinity;
+  const superseded = (e: AiEntry) =>
+    e.status === "fail" &&
+    ((e.source.includes("ivy") && Date.parse(e.ts) < ivyFrom) || (e.source.includes("backtrace") && Date.parse(e.ts) < btClear));
   for (const e of r.data.entries) {
     const at = e.status === "fail" ? resolved.get(issueSig(e)) : undefined;
-    e.resolved = at !== undefined && Date.parse(e.ts) <= at + RESOLVED_DAYS * 86400_000;
+    e.resolved = (at !== undefined && Date.parse(e.ts) <= at + RESOLVED_DAYS * 86400_000) || superseded(e);
     // 检查员 Ivy（2026-11-05）：ivy.py（第三方看公开页）和 backtrace.py（倒推）每跑一次记一条「其他 ok」= 她的打卡；她记的「巡检 fail」= 查出的问题，
     // 断点照常算在负责的人（Chase）头上，这里另存一份给她的工位看
     // MAC（2026-11-05「MAC 设备要单独成为一个角色」）：日志全是这台 Mac 写的，最新一条就是它最后一次活着的时间
