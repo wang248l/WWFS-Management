@@ -7,6 +7,7 @@ import Sparkbars from "./_components/Sparkbars";
 import NeedsYou from "./_components/NeedsYou";
 import ResolveIssueButton from "./_components/ResolveIssueButton";
 import PixelOffice, { type PixelRoom } from "./_components/PixelOffice";
+import { loadAnswers, loadStrategy } from "@/lib/strategy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,10 @@ function ago(d: Date) {
 }
 
 export default async function Lobby() {
-  const [{ departments, handoffCount, needs, human }, promo] = await Promise.all([loadOffice(), loadPromo()]);
+  const [{ departments, handoffCount, needs, human }, promo, strategy, answers] = await Promise.all([loadOffice(), loadPromo(), loadStrategy(), loadAnswers()]);
+  const openDecisions = strategy ? (strategy.decisions || []).filter((d) => answers[`${strategy.week}:${d.id}`]?.choice === undefined).length : 0;
+  const bossTasks = strategy ? (strategy.tasks || []).filter((t) => t.lane !== "agent") : [];
+  const bossDone = strategy ? bossTasks.filter((t) => answers[`${strategy.week}:${t.id}`]?.done).length : 0;
   const officeAgents = departments.flatMap((d) => d.agents);
   const active = officeAgents.filter((a) => a.active);
   const onDuty = active.filter((a) => a.status === "ok").length;
@@ -144,6 +148,21 @@ export default async function Lobby() {
           <span>💬 = 有留言没看</span>
         </div>
       </div>
+
+      {strategy && (
+        <Link href="/strategy" className="rise desk-card block rounded-2xl bg-gradient-to-r from-stone-900 via-stone-800 to-blue-800 text-white px-5 py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-2xl">🎯</span>
+            <div className="flex-1 min-w-[12rem]">
+              <div className="text-xs text-stone-300">本周战略 · {strategy.week} · AI 战略官 Kai</div>
+              <div className="text-lg font-bold leading-snug">{strategy.theme}</div>
+            </div>
+            <span className="rounded-lg bg-white/10 px-3 py-1.5 text-sm">你的任务 {bossDone}/{bossTasks.length}</span>
+            {openDecisions > 0 && <span className="rounded-lg bg-red-500 px-3 py-1.5 text-sm font-semibold">{openDecisions} 件等你拍板</span>}
+            <span className="text-sm text-stone-300">进作战室 →</span>
+          </div>
+        </Link>
+      )}
 
       <div className="rise">
         <PixelOffice rooms={rooms} />

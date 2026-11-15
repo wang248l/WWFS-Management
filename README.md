@@ -8,6 +8,7 @@
 > - `GET /api/agents/inbox?agent=mark` 取老板留言；`POST /api/agents/reply {"agent","text","ack":"all"}` 回复并标已读
 > - `POST /api/agents/task {"agent","title","status","note"}` 挪卡 / 加卡（留资客户 status=handoff）
 > - `POST /api/agents/metrics {"agent","date","posts","impressions","followers","dms","leads","signups"}` 报宣发数字
+> - `GET /api/agents/strategy` 战略官 Kai 拿全公司反馈；`POST /api/agents/strategy {"strategy":{...}}` 交本周战略（显示在 `/strategy` 战略作战室，AI 员工的任务自动变成看板上的 🎯 卡）。规则在项目文件 strategy/AI战略官Kai_规则.md
 
 ## 原 README：管理驾驶舱
 

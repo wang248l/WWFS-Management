@@ -60,6 +60,23 @@ const CATALOGUE: DeptDef[] = [
       { key: "cost_per_open", name: "开口成本", unit: "$", format: "currency", betterWhen: "down", defaultSource: "manual", description: "总成本 ÷ 有效开口/对话数。越低越好。" },
     ],
   },
+  {
+    // 2026-11-15 AI 战略官 Kai 每周读这些数定战略（目标：5 年年收入 14.5 万 → 100 万+）
+    key: "growth",
+    name: "增长战略",
+    icon: "🎯",
+    metrics: [
+      { key: "revenue_month", name: "当月收入（佣金）", unit: "$", format: "currency", betterWhen: "up", defaultSource: "manual", description: "当月到账佣金总额。北极星：年收入 100 万。" },
+      { key: "loans_closed", name: "投资贷款成交", unit: "笔", betterWhen: "up", defaultSource: "manual", description: "当月成交的投资贷款笔数（优先企业主）。" },
+      { key: "loan_volume", name: "投资贷款金额", unit: "$", format: "currency", betterWhen: "up", defaultSource: "manual", description: "当月成交贷款总额（每 10 万约 4000 佣金）。" },
+      { key: "corp_insurance_cases", name: "公司持有寿险成交", unit: "件", betterWhen: "up", defaultSource: "manual", description: "IFA / CDA 大案成交件数。" },
+      { key: "big_case_meetings", name: "大案规划会面", unit: "次", betterWhen: "up", defaultSource: "manual", description: "跟企业主做公司持有寿险规划的会面次数。" },
+      { key: "associates_active", name: "在岗 Associate", unit: "人", betterWhen: "up", defaultSource: "manual", description: "签了 MGA、记分卡达标、在派线索的 Associate 人数。" },
+      { key: "recruit_webinar", name: "职业说明会参加", unit: "人", betterWhen: "up", defaultSource: "manual", description: "当月每周二职业说明会累计参加人数。" },
+      { key: "recruit_applications", name: "增员申请", unit: "份", betterWhen: "up", defaultSource: "manual", description: "交了申请表 + 2 分钟视频的人数。" },
+      { key: "accountant_referrals", name: "会计转介绍", unit: "个", betterWhen: "up", defaultSource: "manual", description: "会计合伙人转介绍来的客户数。" },
+    ],
+  },
 ];
 
 async function main() {
@@ -218,6 +235,16 @@ async function main() {
       host: "Mac mini", schedule: "每天 09:00 / 16:00（跟每日报告一起）", everyHours: 12, graceHours: 2,
       persona: "你是 Ivy，WWFS 的检查员，从结果往回查谁卡住了。",
       tasks: [],
+    },
+    {
+      // 2026-11-15 Wallace：「能否搭建一个 AI 定战略，我只负责执行或者找人执行」——AI 战略官，坐老板办公室
+      key: "strategy", name: "Kai", department: "老板办公室", title: "AI 战略官", avatar: "🎯", order: 3,
+      tags: "定战略,OKR,派任务,复盘",
+      workspaceUrl: "/strategy", workspaceName: "战略作战室",
+      duty: "每周日晚上：读全公司反馈（每个员工的产出和卡点、宣发数字、月度 KPI、老板上周勾了哪些、拍了什么板）→ 复盘上周打分 → 定下周主线、OKR、任务（老板做 / 找人做 / AI 员工做）→ 只把合规、花钱、对外发送、招人这几类交给老板拍板",
+      host: "云端定时任务", schedule: "每周日 18:43（埃德蒙顿）", everyHours: 168, graceHours: 12,
+      persona: "你是 Kai，WWFS 的 AI 战略官。目标：5 年把年收入从 14.5 万做到 100 万以上。两条路：老板做超级 IP、零底薪 Associate（MGA 式）批量增员；当前第一优先是先做投资贷款（优先企业主）建立信任和现金流，再升级公司持有寿险。你定方向、拆任务、派给老板和员工，每周复盘。",
+      tasks: [{ title: "每周日复盘上周、定下周战略", status: "doing" }],
     },
     {
       // 2026-11-03 Wallace：「销售部加入销售经理 Bob」——数字员工 wwfs-agent-salesmgr

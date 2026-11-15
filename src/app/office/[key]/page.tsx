@@ -94,8 +94,8 @@ export default async function Desk({ params }: { params: { key: string } }) {
           </div>
         </div>
         {a.workspaceUrl ? (
-          <a href={a.workspaceUrl} target="_blank" rel="noreferrer" className="btn-primary px-5 py-3 text-base shadow-lg hover:-translate-y-0.5 hover:shadow-xl">
-            打开工作空间：{a.workspaceName || a.workspaceUrl} ↗
+          <a href={a.workspaceUrl} target={a.workspaceUrl.startsWith("/") ? undefined : "_blank"} rel="noreferrer" className="btn-primary px-5 py-3 text-base shadow-lg hover:-translate-y-0.5 hover:shadow-xl">
+            打开工作空间：{a.workspaceName || a.workspaceUrl} {a.workspaceUrl.startsWith("/") ? "→" : "↗"}
           </a>
         ) : (
           <span className="badge bg-amber-50 text-amber-700 px-3 py-1.5">工作空间待建</span>
