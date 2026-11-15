@@ -293,6 +293,8 @@ const LOOKS: Record<string, Look> = {
   // Bob 销售：西装领带；Tina 会计：发髻 + 眼镜 + 开衫
   bob: { hair: "#4a3424", skin: "#f1c29c", shirt: "#2f3a5c", dark: "#d9452f", style: HAIR_SIDE, outfit: SUIT, extra: { L: "#46547f", o: "#c9ccd8" } },
   tina: { hair: "#2a1a14", skin: "#f8d5b8", shirt: "#4c9a6a", dark: "#357350", style: HAIR_BUN, outfit: CARDIGAN, glasses: true, extra: { o: "#f2e4b8" } },
+  // 2026-11-15 AI 战略官 Kai：银灰头发、眼镜、紫色西装外套配金色徽章
+  strategy: { hair: "#9a9cab", skin: "#f3c9a6", shirt: "#5b3fa0", dark: "#3f2a75", style: HAIR_SIDE, outfit: BLAZER, glasses: true, extra: { L: "#7a5cc8", o: "#f6c945" } },
   amelia: { hair: "#3a2418", skin: "#f8d2b4", shirt: "#ec5f9e", dark: "#be3d77", style: HAIR_LONG, outfit: BLAZER, extra: { L: "#f58cbb", o: "#fff1c9" } },
   recruit: { hair: "#1f1f2a", skin: "#f4c7a2", shirt: "#16a394", dark: "#0f766e", style: HAIR_BUN, outfit: CARDIGAN, extra: { o: "#f2e4b8" } },
   ryzen: { hair: "#555a66", skin: "#eebf98", shirt: "#64748b", dark: "#46505f", style: HAIR_SIDE, outfit: SHIRT },
@@ -754,6 +756,20 @@ function ScreenJob({ job, x, y }: { job: string; x: number; y: number }) {
           ))}
         </g>
       );
+    case "strategy": // 路线图：里程碑一个个点亮，终点插旗
+      return (
+        <g>
+          {R(x, y, 17, 10, "#f6f2ff")}
+          <path d={`M${x + 2} ${y + 8}L${x + 6} ${y + 6}L${x + 10} ${y + 6}L${x + 14} ${y + 3}`} stroke="#c9bfe6" strokeWidth={1} fill="none" />
+          {[[2, 8], [6, 6], [10, 6], [14, 3]].map(([dx, dy], i) => (
+            <rect key={i} x={x + dx - 1} y={y + dy - 1} width={2} height={2} fill="#c9bfe6">
+              <Steps attr="fill" values={[...Array(6)].map((_, t) => (t > i ? (i === 3 ? "#f6c945" : "#7a5cc8") : "#c9bfe6"))} dur={4.2} />
+            </rect>
+          ))}
+          {R(x + 14, y, 1, 3, "#3a2a20")}
+          {R(x + 15, y, 2, 2, "#e0504a")}
+        </g>
+      );
     case "amelia": // 日程表，格子一个个排上
       return (
         <g>
@@ -874,6 +890,20 @@ function JobProps({ job, x, y, w, px, py }: { job: string; x: number; y: number;
           {R(right + 7, y - 6, 5, 6, "#fffdf4")}
         </g>
       );
+    case "strategy": { // 桌上一枚国际象棋（马），旁边一张作战计划
+      const kx = right + 1;
+      return (
+        <g>
+          {R(right - 10, y - 3, 9, 3, "#fffdf4")}
+          {R(right - 9, y - 2, 4, 1, "#7a5cc8")}
+          {R(kx + 1, y - 2, 6, 2, "#2a1e1a")}
+          {R(kx + 2, y - 5, 4, 3, "#2a1e1a")}
+          {R(kx + 2, y - 8, 3, 3, "#2a1e1a")}
+          {R(kx + 4, y - 8, 2, 2, "#2a1e1a")}
+          {R(kx + 3, y - 7, 1, 1, "#f6c945")}
+        </g>
+      );
+    }
     case "amelia":
       return (
         <g>
@@ -1300,7 +1330,11 @@ function Room({ room, x, y, w, h, onHover, onLeave }: { room: PixelRoom; x: numb
         })
       )}
       {/* Amelia 当助理：整理好的文件送到 Wallace 桌上 */}
-      {boss && slots.length === 2 && <Flyer from={[startX + widths[0] + 10 + seatX(widths[1]), deskY - 14]} to={[startX + widths[0] - 16, deskY - 12]} dur={3}><Sheet /></Flyer>}
+      {/* 2026-11-15 Kai 坐进来后：Kai 和 Amelia 轮流把计划 / 报告送到 Wallace 桌上 */}
+      {boss && slots[0]?.key === "wallace" && slots.slice(1).map((p, i) => {
+        const sx = startX + widths.slice(0, i + 1).reduce((n, v) => n + v + 10, 0);
+        return <Flyer key={p.key} from={[sx + seatX(widths[i + 1]), deskY - 14]} to={[startX + widths[0] - 16, deskY - 12]} dur={3} begin={`${-i * 1.5}s`}><Sheet /></Flyer>;
+      })}
     </g>
   );
 }

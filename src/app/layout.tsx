@@ -17,6 +17,7 @@ export const viewport: Viewport = { themeColor: "#1d4ed8" };
 
 const NAV = [
   { href: "/", label: "办公室" },
+  { href: "/strategy", label: "🎯 战略作战室" },
   { href: "/board", label: "Agent 看板" },
   { href: "/dashboard", label: "每日仪表盘" },
   { href: "/kpi", label: "月度经营总览" },
