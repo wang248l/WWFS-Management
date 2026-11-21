@@ -16,3 +16,15 @@ export async function agentKeyOk(req: Request): Promise<boolean> {
   db.agentKey.update({ where: { id: k.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
   return true;
 }
+
+/** 同上，但返回是哪把钥匙（INGEST_TOKEN 记成 "ingest"），认不出返回 null。设备列表用来把电脑和钥匙对上。 */
+export async function agentKeyId(req: Request): Promise<string | null> {
+  const h = req.headers.get("authorization") || "";
+  const t = h.startsWith("Bearer ") ? h.slice(7).trim() : "";
+  if (!t) return null;
+  if (process.env.INGEST_TOKEN && t === process.env.INGEST_TOKEN) return "ingest";
+  const k = await db.agentKey.findUnique({ where: { tokenHash: sha(t) } }).catch(() => null);
+  if (!k || k.revokedAt) return null;
+  db.agentKey.update({ where: { id: k.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
+  return k.id;
+}
