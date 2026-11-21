@@ -264,3 +264,36 @@ model ResolvedIssue {
   by         String   @default("owner")
   resolvedAt DateTime @default(now())
 }
+
+// ---- 设备列表（2026-11-21 Wallace：手机从 Mac 挪到 Surface Book 后 Claude 连不上那台电脑，
+// 想在总控台看到所有电脑 + 上面连的安卓手机，并选一台让 Claude 在上面跑任务）----
+
+/// 一台电脑：上面装了 device_agent，每 30 秒来报一次到（带 adb 看到的手机）。
+model Device {
+  id         String   @id // agent 自己定的 id（主机名小写），比如 wallacemacmini / wallacehplaptop
+  name       String // 显示名，比如「Mac mini」「Surface Book」
+  os         String   @default("") // darwin / windows / linux
+  info       String   @default("{}") // JSON：phones[]、claude 版本、agent 版本、工作目录
+  agentKeyId String?
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  jobs       DeviceJob[]
+}
+
+/// 派给某台电脑的一次 Claude 任务（那台机器上跑 `claude -p`，结果传回来）。
+model DeviceJob {
+  id         String    @id @default(cuid())
+  deviceId   String
+  device     Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  prompt     String
+  mode       String    @default("auto") // claude --permission-mode：auto / plan / acceptEdits
+  status     String    @default("queued") // queued / running / done / failed / cancelled
+  output     String    @default("")
+  exitCode   Int?
+  createdBy  String    @default("")
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  @@index([deviceId, status])
+}
