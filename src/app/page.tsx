@@ -7,6 +7,8 @@ import Sparkbars from "./_components/Sparkbars";
 import NeedsYou from "./_components/NeedsYou";
 import ResolveIssueButton from "./_components/ResolveIssueButton";
 import PixelOffice, { type PixelRoom } from "./_components/PixelOffice";
+import SphLoginCard from "./_components/SphLoginCard";
+import { getSph, publicView } from "@/lib/sph";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,7 @@ function ago(d: Date) {
 }
 
 export default async function Lobby() {
-  const [{ departments, handoffCount, needs, human }, promo] = await Promise.all([loadOffice(), loadPromo()]);
+  const [{ departments, handoffCount, needs, human }, promo, sph] = await Promise.all([loadOffice(), loadPromo(), getSph("wallace")]);
   const officeAgents = departments.flatMap((d) => d.agents);
   const active = officeAgents.filter((a) => a.active);
   const onDuty = active.filter((a) => a.status === "ok").length;
@@ -144,6 +146,9 @@ export default async function Lobby() {
           <span>💬 = 有留言没看</span>
         </div>
       </div>
+
+      {/* 2026-11-23 Wallace：视频号登录约 24 小时过期，每天早上在首页扫码 */}
+      <SphLoginCard initial={publicView(sph, "wallace")} />
 
       <div className="rise">
         <PixelOffice rooms={rooms} />
