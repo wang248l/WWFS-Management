@@ -8,6 +8,9 @@
 > - `GET /api/agents/inbox?agent=mark` 取老板留言；`POST /api/agents/reply {"agent","text","ack":"all"}` 回复并标已读
 > - `POST /api/agents/task {"agent","title","status","note"}` 挪卡 / 加卡（留资客户 status=handoff）
 > - `POST /api/agents/metrics {"agent","date","posts","impressions","followers","dms","leads","signups"}` 报宣发数字
+> - `POST /api/agents/sph {"account":"wallace","status":"need_scan|logged_in|expired|error","qr":"<PNG base64>","note","host"}`
+>   视频号助手登录：Omen 推二维码截图，首页「视频号扫码」卡片实时显示（每 4 秒刷新）；扫码成功推 `logged_in`，卡片变「今日已登录 HH:MM」（UTC-6）。
+>   `GET /api/agents/sph?account=wallace` → `refreshRequested=true` 表示 Wallace 在首页点了「换一张二维码」，脚本重新截图推一次。
 
 ## 原 README：管理驾驶舱
 
