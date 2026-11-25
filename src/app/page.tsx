@@ -31,6 +31,7 @@ function ago(d: Date) {
 
 export default async function Lobby() {
   const [{ departments, handoffCount, needs, human }, promo, sph] = await Promise.all([loadOffice(), loadPromo(), getSph("wallace")]);
+  const sphAmelia = await getSph("amelia"); // 2026-11-25: Amelia 视频号 also logs in by QR from Omen
   const officeAgents = departments.flatMap((d) => d.agents);
   const active = officeAgents.filter((a) => a.active);
   const onDuty = active.filter((a) => a.status === "ok").length;
@@ -149,6 +150,8 @@ export default async function Lobby() {
 
       {/* 2026-11-23 Wallace：视频号登录约 24 小时过期，每天早上在首页扫码 */}
       <SphLoginCard initial={publicView(sph, "wallace")} />
+      {/* 2026-11-25：Amelia 视频号用她自己的微信扫（Omen 单独的 Chrome profile） */}
+      <SphLoginCard initial={publicView(sphAmelia, "amelia")} />
 
       <div className="rise">
         <PixelOffice rooms={rooms} />
